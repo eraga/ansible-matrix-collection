@@ -1,0 +1,12 @@
+= Ansible Collection - eraga.matrix_chat
+
+Documentation for the collection.
+
+[source, bash, title=MacOS X]
+----
+#brew install --build-from-source libolm
+brew install libolm
+pip3 install matrix-nio[e2e]
+----
+
+
