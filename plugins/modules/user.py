@@ -13,13 +13,44 @@ ANSIBLE_METADATA = {
 }
 
 """
-- name: User exists
+- name: User exists at matrix server  wit avatar from file system
   eraga.matrix.user:
     matrix_uri: "https://matrix.example.com"
     matrix_user:  ansiblebot
     matrix_token: "{{token}}"
     matrix_domain: example.com
-    login: someone     
+    login: ivan     
+    displayname: Ivan Kalinin     
+    avatar: "/path/to/local/image.png"
+    
+- name: User exists at matrix server
+  eraga.matrix.user:
+    matrix_uri: "https://matrix.example.com"
+    matrix_user:  ansiblebot
+    matrix_token: "{{token}}"
+    matrix_domain: example.com
+    login: johnny     
+    displayname: Джон Доу     
+    avatar: "http:/example.com/path/to/web/image.png"     
+
+- name: User exists and deactivated at matrix server
+  eraga.matrix.user:
+    matrix_uri: "https://matrix.example.com"
+    matrix_user:  ansiblebot
+    matrix_token: "{{token}}"
+    matrix_domain: example.com
+    login: c3p0     
+    state: deactivated
+    
+- name: Get account info from Matrix server
+  eraga.matrix.user:
+    matrix_uri: "https://matrix.example.com"
+    matrix_user:  ansiblebot
+    matrix_token: "{{token}}"
+    matrix_domain: example.com
+    login: d_trump     
+  check_mode: yes
+  register: matrix_user 
 """
 
 
@@ -36,38 +67,18 @@ async def run_module():
         displayname=dict(type='str', default=None),
         avatar=dict(type='str', default=None),
 
-        # name=dict(type='str', default=None),
-        # topic=dict(type='str', default=None),
-        # federate=dict(type='bool', default=False),
-        # visibility=dict(type='str', default="private",
-        #                 choices=["private", "public"]),
-        # preset=dict(type='str', default=None,
-        #             choices=["private_chat", "trusted_private_chat", "public_chat"]),
-        # room_members=dict(type='dict', default=None),
-        # power_level_override=dict(type='dict', default=None),
-        # encrypt=dict(type='bool', default=False),
-        #
-        # community=dict(type='str', default=None),
+        admin=dict(type='bool', default=None),
 
         state=dict(type="str", default="present",
-                   choices=["present", "absent", "archived"])
+                   choices=["present", "absent", "deactivated"])
     )
 
-    # seed the result dict in the object
-    # we primarily care about changed and state
-    # change is if this module effectively modified the target
-    # state will include any data that you want your module to pass back
-    # for consumption, for example, in a subsequent task
     result = dict(
         user={},
         changed=False,
         changed_fields={}
     )
 
-    # the AnsibleModule object will be our abstraction working with Ansible
-    # this includes instantiation, a couple of common attr would be the
-    # args/params passed to the execution, as well as if the module
-    # supports check mode
     module = AnsibleModule(
         argument_spec=module_args,
         supports_check_mode=True
@@ -93,7 +104,6 @@ async def run_module():
             exists = user.account is not None
             if exists:
                 result['user'] = user.account.dict()
-                # del result['room']['power_levels']
 
             if module.check_mode:
                 module.exit_json(**result)
@@ -108,24 +118,18 @@ async def run_module():
             del params['state']
 
             if state == 'absent':
-                pass
-                # if room_exists:
-                # await room.delete()
+                raise NotImplementedError
+                # await user.delete()
                 # result['changed'] = bool(result['changed_fields'])
-                # result['changed'] = api.delete(result['project']['id'])
 
             elif state == 'present':
                 await user.update(**params)
                 result['changed'] = bool(result['changed_fields'])
-            #     else:
-            #         await room.matrix_room_update(**room_params)
-            #         result['changed'] = bool(result['changed_fields'])
-            #
-            # # elif state == 'archived':
-            # #     if not result['project']['archived']:
-            # #         result['changed_fields'] = api.update(project)
-            # #         result['changed'] = result['changed_fields'] is not False
-            #
+
+            elif state == 'deactivated':
+                await user.set_deactivated(True)
+                result['changed'] = bool(result['changed_fields'])
+
             else:
                 result['changed'] = bool(result['changed_fields'])
                 module.fail_json(msg='Unsupported state={}'.format(state), **result)

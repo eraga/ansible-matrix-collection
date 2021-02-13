@@ -113,7 +113,6 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
         if displayname is None or self.account.displayname == displayname:
             return
 
-
         await self._update_account(content={
             "displayname": displayname
         })
@@ -121,6 +120,18 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
         self.changes['displayname'] = {}
         self.changes['displayname']['old'] = self.account.displayname
         self.changes['displayname']['new'] = displayname
+
+    def set_deactivated(self, deactivated: Optional[bool] = None):
+        if deactivated is None or self.account.deactivated == deactivated:
+            return
+
+        await self._update_account(content={
+            "deactivated": deactivated
+        })
+
+        self.changes['deactivated'] = {}
+        self.changes['deactivated']['old'] = self.account.deactivated
+        self.changes['deactivated']['new'] = deactivated
 
     async def upload_avatar(self, in_image: Optional[str]):
         if in_image is None:
