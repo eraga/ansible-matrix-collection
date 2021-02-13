@@ -16,6 +16,7 @@ the other Matrix Homeserver implementations.
 ** [x] invite room members;
 ** [x] kick room members;
 ** [ ] update room avatar.
+** [ ] ability to reference room by the `id` instead of `alias`.
 * Manage Communities:
 ** [ ] create;
 ** [ ] update;
@@ -23,10 +24,10 @@ the other Matrix Homeserver implementations.
 ** [ ] kick/invite members.
 ** [ ] update avatar.
 * Send messages to matrix rooms:
-** [x] actual send;
-** [x] markdown text;
-** [ ] images;
-** [ ] file attachments;
+** [x] unencrypted messages;
+*** [x] markdown text;
+*** [ ] images;
+*** [ ] file attachments;
 ** [ ] encrypted messages;
 
 
