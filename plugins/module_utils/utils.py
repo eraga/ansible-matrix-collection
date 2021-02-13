@@ -1,10 +1,12 @@
 import os.path
 import base64
 import mimetypes
+import tempfile
 from typing import *
 
 import requests
 from ansible.errors import AnsibleError
+from cairosvg import svg2png
 
 
 class ImageError(AnsibleError):
@@ -35,7 +37,7 @@ def file2data(file: str, mime: Optional[str] = None) -> str:
     return base64image
 
 
-def url2file(url: str) -> (str, str):
+def url2file(url: str, tmp: tempfile.TemporaryDirectory) -> (str, str):
     r = requests.get(url)
     mime = r.headers['content-type']
     file_suffix = ""
@@ -45,12 +47,30 @@ def url2file(url: str) -> (str, str):
         file_suffix = ".png"
     elif "svg" in mime:
         file_suffix = ".svg"
-    file = '/Users/klaus/Downloads/' + url.split("/").pop() + file_suffix
-    with open(file, 'wb') as f:
+
+    file_name = url.split("/").pop() + file_suffix
+    path = os.path.join(tmp.name,  file_name)
+    with open(path, 'wb') as f:
         f.write(r.content)
 
-    return file, r.headers['content-type']
+    return path, r.headers['content-type']
 
+
+def if_svg_convert_to_png(
+        image: str,
+        mime: str,
+        tmp: tempfile.TemporaryDirectory,
+        output_height=600) -> (str, str):
+    mime_type = mime
+    if "image/svg" in mime_type:
+        base_name = os.path.basename(image) + '.png'
+        file_name = os.path.join(tmp.name,  base_name)
+        with open(image, "rb") as image_file:
+            svg2png(file_obj=image_file, write_to=file_name, output_height=output_height)
+        image = file_name
+        mime_type = detect_mime_type(image)
+
+    return image, mime_type
 
 def url2data(url: str) -> str:
     (file, mime) = url2file(url)

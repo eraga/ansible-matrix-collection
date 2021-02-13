@@ -149,7 +149,7 @@ async def run_module():
                 await matrix_client.sync()
                 result['room'] = room.matrix_room_to_dict()
 
-        except MatrixError as e:
+        except AnsibleMatrixError as e:
             result['changed'] = bool(result['changed_fields'])
             module.fail_json(msg='MatrixError={}'.format(e), **result)
         finally:

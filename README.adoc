@@ -1,18 +1,27 @@
 = Ansible Collection - eraga.matrix
 
-Collection of modules to manage Matrix homeserver instance:
+Collection of modules to manage Matrix Homeserver instance. Only tested with Synapse but may (partially) work with
+the other Matrix Homeserver implementations.
 
-* Matrix users (synapse server only via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst[synapse admin api]):
+== Features
+
+* Manage Users (synapse server only via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst[synapse admin api]):
 ** [x] register,
 ** [x] update,
 ** [x] deactivate.
-* Matrix Rooms actions:
+* Manage Rooms:
 ** [x] create;
 ** [x] update;
 ** [x] delete (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/rooms.md#delete-room-api[synapse admin api]);
 ** [x] invite room members;
 ** [x] kick room members;
 ** [ ] update room avatar.
+* Manage Communities:
+** [ ] create;
+** [ ] update;
+** [ ] delete;
+** [ ] kick/invite members.
+** [ ] update avatar.
 * Send messages to matrix rooms:
 ** [x] actual send;
 ** [x] markdown text;

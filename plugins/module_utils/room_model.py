@@ -4,7 +4,7 @@ from markdown import markdown
 
 from ansible_collections.eraga.matrix.plugins.module_utils.client_model import _AnsibleMatrixObject
 from ansible_collections.eraga.matrix.plugins.module_utils.client_model import *
-from ansible_collections.eraga.matrix.plugins.module_utils.errors import MatrixError
+from ansible_collections.eraga.matrix.plugins.module_utils.errors import AnsibleMatrixError
 
 
 class AnsibleMatrixRoom(_AnsibleMatrixObject):
@@ -65,7 +65,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         )
 
         if isinstance(pl_result, RoomPutStateError):
-            raise MatrixError(pl_result.__dict__)
+            raise AnsibleMatrixError(pl_result.__dict__)
 
         # logger.debug("{}: set topic to: {}", self.matrix_room_alias, topic)
 
@@ -88,7 +88,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         )
 
         if isinstance(pl_result, RoomPutStateError):
-            raise MatrixError(pl_result.__dict__)
+            raise AnsibleMatrixError(pl_result.__dict__)
 
     # async def set_federate(self, federate):
     #     pass
@@ -162,14 +162,14 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
                 )
 
                 if isinstance(pl_result, RoomPutStateError):
-                    raise MatrixError(pl_result.__dict__)
+                    raise AnsibleMatrixError(pl_result.__dict__)
                 else:
                     return
         else:
             if not self.matrix_room.encrypted:
                 return
             else:
-                raise MatrixError("Once enabled, encryption cannot be disabled.")
+                raise AnsibleMatrixError("Once enabled, encryption cannot be disabled.")
 
     async def set_community(self, community):
         pass
@@ -181,7 +181,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             content=content
         )
         if isinstance(pl_result, RoomPutStateError):
-            raise MatrixError("{}".format(pl_result.message))
+            raise AnsibleMatrixError("{}".format(pl_result.message))
 
         return pl_result
 
@@ -238,7 +238,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         # self.changes['users']['invited'] = invited_users
 
         if self.matrix_room.creator in kicked_users:
-            raise MatrixError("Can't kick creator {}".format(self.matrix_room.creator))
+            raise AnsibleMatrixError("Can't kick creator {}".format(self.matrix_room.creator))
 
         # do invites
         for mxid in invited_users:
@@ -277,7 +277,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
     ):
         await self.matrix_client.sync()
         if self.matrix_room_id not in self.matrix_client.rooms:
-            raise MatrixError("Not in room {}, can't manage it".format(self.matrix_room_fq_alias))
+            raise AnsibleMatrixError("Not in room {}, can't manage it".format(self.matrix_room_fq_alias))
 
         self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
         await self._become_room_admin(self.matrix_client.user)
@@ -331,9 +331,9 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         )
         if isinstance(result, RoomCreateError):
             if isinstance(result.status_code, str) and result.status_code == "M_ROOM_IN_USE":
-                raise MatrixError("can't create room '{}': already exists".format(self.matrix_room_alias))
+                raise AnsibleMatrixError("can't create room '{}': already exists".format(self.matrix_room_alias))
             else:
-                raise MatrixError("can't create room '{}':".format(self.matrix_room_alias, result))
+                raise AnsibleMatrixError("can't create room '{}':".format(self.matrix_room_alias, result))
 
         self.matrix_room_id = result.room_id
 
@@ -365,7 +365,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         )
 
         if isinstance(response, ErrorResponse):
-            raise MatrixError(
+            raise AnsibleMatrixError(
                 f"Failed to send message to {self.matrix_room_alias} due to {response.status_code}: {response.message}"
             )
         elif isinstance(response, RoomSendResponse):

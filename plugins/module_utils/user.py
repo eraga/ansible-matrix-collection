@@ -1,18 +1,8 @@
-import os
-import tempfile
-
-import aiofiles
-import aiofiles.os
-
 from dataclasses import asdict, dataclass
 from dataclasses_json import dataclass_json, Undefined
 
 from ansible_collections.eraga.matrix.plugins.module_utils.client_model import _AnsibleMatrixObject
 from ansible_collections.eraga.matrix.plugins.module_utils.client_model import *
-from ansible_collections.eraga.matrix.plugins.module_utils.errors import MatrixError
-from ansible_collections.eraga.matrix.plugins.module_utils.utils import detect_mime_type, url2file
-
-from cairosvg import svg2png
 
 
 @dataclass_json(undefined=Undefined.EXCLUDE)
@@ -146,57 +136,18 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
         self.changes['deactivated']['new'] = deactivated
 
     async def upload_avatar(self, in_image: Optional[str]):
-        if in_image is None:
+        resp = await self.matrix_client.upload_image_if_new(in_image, self.account.avatar_url)
+
+        if resp is None:
             return
-        url_mime = None
-        if in_image.startswith("http"):
-            in_image, url_mime = url2file(in_image)
 
-        mime_type = detect_mime_type(in_image, url_mime)
+        await self._update_account(content={
+            "avatar_url": resp.content_uri
+        })
 
-        image = in_image
-
-        if "image/svg" in mime_type:
-            tf = tempfile.NamedTemporaryFile(prefix=os.path.basename(in_image), suffix='.png')
-            with open(in_image, "rb") as image_file:
-                svg2png(file_obj=image_file, write_to=tf.name, output_height=600)
-            image = tf.name
-            mime_type = detect_mime_type(image)
-
-        file_stat = await aiofiles.os.stat(image)
-
-        if self.account.avatar_url is not None:
-            server, media = self.account.avatar_url.replace("mxc://", "").split("/")
-            print(server)
-            print(media)
-            resp = await self.matrix_client.download(server, media)
-            if isinstance(resp, DownloadError):
-                raise MatrixError(
-                    f"Failed to download image. Failure status {resp.status_code} and reason: {resp.message}")
-
-            if file_stat.st_size == len(resp.body) \
-                    and mime_type == resp.content_type \
-                    and os.path.basename(in_image) in resp.filename:
-                return
-
-        async with aiofiles.open(image, "r+b") as f:
-            resp, maybe_keys = await self.matrix_client.upload(
-                f,
-                content_type=mime_type,  # image/jpeg
-                filename=os.path.basename(image),
-                filesize=file_stat.st_size)
-
-        if isinstance(resp, UploadResponse):
-            # print("Image was uploaded successfully to server. ")
-            await self._update_account(content={
-                "avatar_url": resp.content_uri
-            })
-            self.changes['avatar_url'] = {}
-            self.changes['avatar_url']['old'] = self.account.avatar_url
-            self.changes['avatar_url']['new'] = resp.content_uri
-
-        else:
-            raise MatrixError(f"Failed to upload image. Failure status {resp.status_code} and reason: {resp.message}")
+        self.changes['avatar_url'] = {}
+        self.changes['avatar_url']['old'] = self.account.avatar_url
+        self.changes['avatar_url']['new'] = resp.content_uri
 
     async def update(
             self,
@@ -209,4 +160,3 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
         await self.set_displayname(displayname)
         await self.set_admin(admin)
         await self._load_account()
-

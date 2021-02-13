@@ -137,7 +137,7 @@ async def run_module():
             if result['changed']:
                 result['user'] = user.account.dict()
 
-        except MatrixError as e:
+        except AnsibleMatrixError as e:
             result['changed'] = bool(result['changed_fields'])
             module.fail_json(msg='MatrixError={}'.format(e), **result)
         finally:

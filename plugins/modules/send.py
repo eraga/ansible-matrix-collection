@@ -88,7 +88,7 @@ async def run_module():
             )
             result['changed'] = bool(result['changed_fields'])
 
-        except MatrixError as e:
+        except AnsibleMatrixError as e:
             module.fail_json(msg='MatrixError={}'.format(e), **result)
         finally:
             await room.__aexit__()
