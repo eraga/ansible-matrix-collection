@@ -13,7 +13,12 @@ Collection of modules to manage Matrix homeserver instance:
 ** [x] invite room members;
 ** [x] kick room members;
 ** [ ] update room avatar.
-
+* Send messages to matrix rooms:
+** [x] actual send;
+** [x] markdown text;
+** [ ] images;
+** [ ] file attachments;
+** [ ] encrypted messages;
 
 
 == Dependencies
@@ -22,16 +27,56 @@ All dependencies are gathered in role `eraga.matrix.module_dependencies`.
 
 [source, yaml]
 ----
+ifndef::env-github[]
 include::roles/module_dependencies/tests/test.yml[]
+endif::[]
+ifdef::env-github[]
+---
+- hosts: localhost
+  roles:
+    - eraga.matrix.module_dependencies
+endif::[]
 ----
 
 
 == Examples
 
+=== Send message to Matrix room
+
 [source, yaml]
 ----
 ---
-- name: Sync users from JetBrains Hub instance to Matrix Synapse
+- name: Sync users and project rooms from JetBrains Hub instance to Matrix Synapse
+  connection: local
+  hosts: localhost
+  gather_facts: false
+  vars:
+    matrix_uri: "https://matrix.example.net"
+    matrix_token: "redacted"
+    matrix_user: "ansible"
+  roles:
+    - eraga.matrix.module_dependencies
+  tasks:
+    - name: Send text to room
+      eraga.matrix.send:
+        matrix_uri: "{{matrix_uri}}"
+        matrix_user: "{{matrix_token}}"
+        matrix_token: "{{matrix_user}}"
+        matrix_domain: example.net
+        room: ansible_example_room_1
+        text: |
+          ## Test message
+
+          *json*: {{room}}
+
+----
+
+=== Sync user accounts and rooms from external Identity Provider (e.g. JetBrains Hub)
+
+[source, yaml]
+----
+---
+- name: Sync users and project rooms from JetBrains Hub instance to Matrix Synapse
   connection: local
   hosts: localhost
   gather_facts: false

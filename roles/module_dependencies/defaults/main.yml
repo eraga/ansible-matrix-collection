@@ -1,4 +1,7 @@
 ---
-matrix_pip_dependencies:
+matrix_modules_package_dependencies:
+  - libolm
+
+matrix_modules_pip_dependencies:
   - matrix-nio[e2e]
   - cairosvg
