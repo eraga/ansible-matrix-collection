@@ -6,7 +6,7 @@ name: matrix
 version: 1.0.0
 
 # The path to the Markdown (.md) readme file. This path is relative to the root of the collection
-readme: README.ad
+readme: README.adoc
 
 # A list of the collection's content authors. Can be just the name or in the format 'Full Name <email> (url)
 # @nicks:irc/im.site#channel'
