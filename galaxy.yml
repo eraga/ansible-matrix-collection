@@ -11,19 +11,19 @@ readme: README.adoc
 # A list of the collection's content authors. Can be just the name or in the format 'Full Name <email> (url)
 # @nicks:irc/im.site#channel'
 authors:
-- Klaus Schwartz <klaus@eraga.net>
+  - Klaus Schwartz <klaus@eraga.net>
 
 
 description: A collection of modules to manage Matrix Chat instance
 
 license:
-- MIT
+  - MIT
 
 license_file: ''
 
-tags: ["matrix", "notifications", "chat", "eraga"]
+tags: [ "matrix", "notifications", "chat", "eraga" ]
 
-dependencies: {}
+dependencies: { }
 
 repository: https://github.com/eraga/ansible-matrix-collection
 
@@ -40,5 +40,5 @@ issues: https://github.com/eraga/ansible-matrix-collection
 # artifact. A pattern is matched from the relative path of the file or directory of the collection directory. This
 # uses 'fnmatch' to match the files or directories. Some directories and files like 'galaxy.yml', '*.pyc', '*.retry',
 # and '.git' are always filtered
-build_ignore: []
+build_ignore: [ ]
 

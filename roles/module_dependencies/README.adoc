@@ -1,0 +1,11 @@
+= Role Name
+
+Installs dependencies for collection modules to function properly
+
+== Example Playbook
+
+[source, yaml]
+----
+include::tests/test.yml[]
+----
+

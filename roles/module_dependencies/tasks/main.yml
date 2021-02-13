@@ -1,0 +1,10 @@
+---
+- name: Ensure libolm is latest
+  package:
+    name: libolm
+    state: latest
+
+- name: Ensure python dependencies present
+  pip:
+    name: "{{matrix_pip_dependencies}}"
+    state: present

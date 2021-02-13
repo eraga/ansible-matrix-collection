@@ -1,0 +1,18 @@
+galaxy_info:
+  author: klaus
+  description: Ensures host has dependencies to run collection modules
+  company: eraga
+
+  license: MIT
+
+  min_ansible_version: 2.10
+
+  platforms:
+    - name: Debian
+      versions:
+        - all
+
+  galaxy_tags:
+    - matrix
+
+dependencies: [ ]

@@ -1,0 +1,4 @@
+---
+matrix_pip_dependencies:
+  - matrix-nio[e2e]
+  - cairosvg

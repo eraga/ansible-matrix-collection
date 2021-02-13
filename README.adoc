@@ -6,29 +6,23 @@ Collection of modules to manage Matrix homeserver instance:
 ** [x] register,
 ** [x] update,
 ** [x] deactivate.
-* Matrix Rooms:
+* Matrix Rooms actions:
 ** [x] create;
 ** [x] update;
-** [ ] update room avatar;
 ** [x] delete (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst#change-whether-a-user-is-a-server-administrator-or-not[synapse admin api]);
-** [x] manage invites;
-** [x] kick and ban room members;
+** [x] invite room members;
+** [x] kick room members;
+** [ ] update room avatar.
+
 
 
 == Dependencies
 
-[source, bash, title=MacOS X]
-----
-#brew install --build-from-source libolm
-brew install libolm
-pip3 install matrix-nio[e2e]
-----
+All dependencies are gathered in role `eraga.matrix.module_dependencies`.
 
-[source, bash, title=Linux]
+[source, yaml]
 ----
-#brew install --build-from-source libolm
-apt install libolm
-pip3 install matrix-nio[e2e]
+include::roles/module_dependencies/tests/test.yml[]
 ----
 
 
@@ -50,6 +44,8 @@ pip3 install matrix-nio[e2e]
     matrix_user: "ansible"
 
     all_users: []
+  roles:
+    - eraga.matrix.module_dependencies
   tasks:
     - name: Get Hub projects with fields and query
       eraga.jb_hub.projects:

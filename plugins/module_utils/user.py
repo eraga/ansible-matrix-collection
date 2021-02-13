@@ -121,7 +121,19 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
         self.changes['displayname']['old'] = self.account.displayname
         self.changes['displayname']['new'] = displayname
 
-    def set_deactivated(self, deactivated: Optional[bool] = None):
+    async def set_admin(self, admin: Optional[bool] = None):
+        if admin is None or self.account.admin == admin:
+            return
+
+        await self._update_account(content={
+            "admin": admin
+        })
+
+        self.changes['admin'] = {}
+        self.changes['admin']['old'] = self.account.admin
+        self.changes['admin']['new'] = admin
+
+    async def set_deactivated(self, deactivated: Optional[bool] = None):
         if deactivated is None or self.account.deactivated == deactivated:
             return
 
@@ -189,9 +201,12 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
     async def update(
             self,
             avatar: Optional[str] = None,
-            displayname: Optional[str] = None
+            displayname: Optional[str] = None,
+            admin: Optional[bool] = None,
     ):
         # self.changes['print'] = avatar
         await self.upload_avatar(avatar)
         await self.set_displayname(displayname)
+        await self.set_admin(admin)
         await self._load_account()
+
