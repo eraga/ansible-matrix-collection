@@ -145,7 +145,7 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
         image = in_image
 
         if "image/svg" in mime_type:
-            tf = tempfile.NamedTemporaryFile(prefix=os.path.basename(in_image),suffix='.png')
+            tf = tempfile.NamedTemporaryFile(prefix=os.path.basename(in_image), suffix='.png')
             with open(in_image, "rb") as image_file:
                 svg2png(file_obj=image_file, write_to=tf.name, output_height=600)
             image = tf.name
@@ -159,7 +159,8 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
             print(media)
             resp = await self.matrix_client.download(server, media)
             if isinstance(resp, DownloadError):
-                raise MatrixError(f"Failed to download image. Failure status {resp.status_code} and reason: {resp.message}")
+                raise MatrixError(
+                    f"Failed to download image. Failure status {resp.status_code} and reason: {resp.message}")
 
             if file_stat.st_size == len(resp.body) \
                     and mime_type == resp.content_type \

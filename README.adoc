@@ -1,6 +1,18 @@
 = Ansible Collection - eraga.matrix
 
-Documentation for the collection.
+Collection of modules to manage Matrix homeserver instance:
+
+* Matrix users (synapse server only via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst#change-whether-a-user-is-a-server-administrator-or-not[synapse admin api]):
+** [x] register,
+** [x] update,
+** [x] deactivate.
+* Matrix Rooms:
+** [x] create;
+** [x] update;
+** [ ] update room avatar;
+** [x] delete (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst#change-whether-a-user-is-a-server-administrator-or-not[synapse admin api]);
+** [x] manage invites;
+** [x] kick and ban room members;
 
 
 == Dependencies
@@ -17,4 +29,81 @@ pip3 install matrix-nio[e2e]
 #brew install --build-from-source libolm
 apt install libolm
 pip3 install matrix-nio[e2e]
+----
+
+
+== Examples
+
+[source, yaml]
+----
+---
+- name: Sync users from JetBrains Hub instance to Matrix Synapse
+  connection: local
+  hosts: localhost
+  gather_facts: false
+  vars:
+    hub_uri: "https://hub.example.net/hub"
+    hub_token: "redacted"
+
+    matrix_uri: "https://matrix.example.net"
+    matrix_token: "redacted"
+    matrix_user: "ansible"
+
+    all_users: []
+  tasks:
+    - name: Get Hub projects with fields and query
+      eraga.jb_hub.projects:
+        hub_uri: "{{hub_uri}}"
+        hub_token: "{{hub_token}}"
+        query: "not is: global"
+        fields: "name,key,team(users(login,banned,avatar,name))"
+      register: projects_result
+
+    - name: Aggregate all unbanned users
+      set_fact:
+        all_users: "{{ project.team.users  | rejectattr('banned', 'true') | eraga.jb_hub.user2dict | union(all_users) }}"
+      with_items: "{{projects_result.projects}}"
+      loop_control:
+        loop_var: project
+        label: "{{ project.key }}"
+
+    - name: Ensure user {{user.login}} exists in Matrix and has synced profile
+      eraga.matrix.user:
+        matrix_uri: "{{matrix_uri}}"
+        matrix_user: "{{matrix_user}}"
+        matrix_token: "{{matrix_token}}"
+        matrix_domain: example.net
+        login: "{{user.login}}"
+        avatar: "{{user.avatar_url | default(omit) }}"
+        displayname: "{{user.name | default(omit) }}"
+      with_items: "{{all_users}}"
+      loop_control:
+        loop_var: user
+        label: "{{ user.login }}"
+
+    - name: Room for Hub Project exists and room members are synced
+      eraga.matrix.room:
+        matrix_uri: "{{matrix_uri}}"
+        matrix_user: "{{matrix_user}}"
+        matrix_token: "{{matrix_token}}"
+        matrix_domain: example.net
+        alias: "{{ project.key | lower }}_general"
+        name: "{{ project.name }}"
+        topic: This is room managed by ansible, yay!
+        federate: no
+        visibility: private
+        preset: private_chat
+        encrypt: yes
+        room_members: "{{ project.team.users | rejectattr('banned', 'true') | map(attribute='login') | eraga.matrix.list2members(0) }}"
+        power_level_override:
+          events_default: 0
+          state_default: 90
+          ban: 90
+          kick: 50
+          redact: 50
+          invite: 10
+      with_items: "{{projects_result.projects}}"
+      loop_control:
+        loop_var: project
+        label: "{{ project.key }}"
 ----
