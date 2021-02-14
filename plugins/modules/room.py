@@ -24,7 +24,7 @@ ANSIBLE_METADATA = {
     preset: trusted_private_chat
     avatar: "http://example.com/path/to/avatar.png"
     
-- name: Room exists in community:
+- name: Room exists and is part of 'test' and 'prod' community
   eraga.matrix.room:
     matrix_uri: "https://matrix.example.com"
     matrix_user:  ansiblebot
@@ -37,6 +37,9 @@ ANSIBLE_METADATA = {
     visibility: private
     preset: trusted_private_chat
     avatar: "/path/to/avatar.png"
+    communities:
+      - test
+      - prod
     room_members:
       owner_login: 100
       admin_login: 90
@@ -75,7 +78,7 @@ async def run_module():
         power_level_override=dict(type='dict', default=None),
         encrypt=dict(type='bool', default=False),
 
-        community=dict(type='str', default=None),
+        communities=dict(type='list', default=None),
 
         state=dict(type="str", default="present",
                    choices=["present", "absent", "archived"])
@@ -133,7 +136,6 @@ async def run_module():
             del room_params['matrix_domain']
             del room_params['matrix_token']
             del room_params['alias']
-            del room_params['community']
             del room_params['state']
 
             if state == 'absent':

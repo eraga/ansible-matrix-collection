@@ -60,6 +60,7 @@ class AnsibleMatrixCommunity(_AnsibleMatrixObject):
         super(AnsibleMatrixCommunity, self).__init__(domain=matrix_client.domain)
         self.matrix_client = matrix_client
         self.localpart = localpart
+        self.group_id = self.localpart_to_mx_group(localpart)
         self.changes = changes
         self.summary: Optional[AnsibleMatrixCommunitySummary] = None
 
@@ -210,7 +211,13 @@ class AnsibleMatrixCommunity(_AnsibleMatrixObject):
         response.raise_for_status()
         await self._load_community()
 
+    def has_room(self, room_id: str) -> bool:
+        return room_id in self.summary.rooms_list
+
     async def add_room(self, room_id: str, visibility: str = "private"):
+        if self.has_room(room_id):
+            return
+
         group = self.localpart_to_mx_group(self.localpart)
         method = "PUT"
         path = ["groups", group, "admin", "rooms", room_id]
@@ -345,8 +352,7 @@ class AnsibleMatrixCommunity(_AnsibleMatrixObject):
             return
 
         for alias in rooms:
-            if alias not in self.summary.rooms_list:
-                await self.add_room(self.room_alias_to_mx_alias(alias))
+            await self.add_room(self.room_alias_to_mx_alias(alias))
 
     async def set_name(self, name: Optional[str]):
         if name is None or name == self.profile.name:

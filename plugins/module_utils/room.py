@@ -1,9 +1,11 @@
 import asyncio
+from typing import Set
 
 from markdown import markdown
 
 from ansible_collections.eraga.matrix.plugins.module_utils.client_model import _AnsibleMatrixObject
 from ansible_collections.eraga.matrix.plugins.module_utils.client_model import *
+from ansible_collections.eraga.matrix.plugins.module_utils.community import AnsibleMatrixCommunity
 from ansible_collections.eraga.matrix.plugins.module_utils.errors import AnsibleMatrixError
 
 
@@ -23,6 +25,8 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         self.matrix_room: Optional[MatrixRoom] = None
 
         self.matrix_room_id = None
+
+        self.communities: Set[str] = set()
 
     async def __aenter__(self):
         room_alias_response = await self.matrix_client.room_resolve_alias(self.matrix_room_fq_alias)
@@ -167,8 +171,35 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             else:
                 raise AnsibleMatrixError("Once enabled, encryption cannot be disabled.")
 
-    async def set_community(self, community):
-        pass
+    async def set_communities(self, localparts: Optional[List[str]]):
+        if localparts is None:
+            return
+
+        communities_changes: List[Dict[str, Any]] = []
+        for localpart in localparts:
+            community_changes: Dict[str, Any] = {}
+
+            community = AnsibleMatrixCommunity(
+                matrix_client=self.matrix_client,
+                localpart=localpart,
+                changes=community_changes
+            )
+
+            async with community:
+                if community.summary is None:
+                    continue
+
+                if community.has_room(self.matrix_room_id):
+                    self.communities.add(community.group_id)
+                    continue
+
+                await community.add_room(self.matrix_room_id)
+
+                if community_changes:
+                    communities_changes.append(community_changes)
+
+        if communities_changes:
+            self.changes['community'] = communities_changes
 
     async def set_power_levels(self, content: Dict) -> RoomPutStateResponse:
         pl_result = await self.matrix_client.room_put_state(
@@ -280,7 +311,8 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             preset: Optional[RoomPreset] = None,
             room_members: Optional[Dict[str, int]] = None,
             encrypt: bool = False,
-            power_level_override: Optional[Dict[str, Any]] = None
+            power_level_override: Optional[Dict[str, Any]] = None,
+            communities: Optional[List[str]] = None
     ):
         await self.matrix_client.sync()
         if self.matrix_room_id not in self.matrix_client.rooms:
@@ -292,12 +324,13 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         await self.matrix_client.sync()
 
         await asyncio.gather(
+            self.set_encryption(encrypt),
             self.set_avatar(avatar),
             self.set_topic(topic),
             self.set_name(name),
-            self.set_encryption(encrypt),
             self.set_visibility(visibility),
-            self.set_power_level_overrides(power_level_override)
+            self.set_power_level_overrides(power_level_override),
+            self.set_communities(communities)
         )
 
     def matrix_room_exists(self) -> bool:
@@ -314,7 +347,8 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             preset: Optional[str] = None,
             room_members: Optional[Dict[str, int]] = None,
             encrypt: bool = False,
-            power_level_override: Optional[Dict[str, Any]] = None
+            power_level_override: Optional[Dict[str, Any]] = None,
+            communities: Optional[List[str]] = None
     ):
         invitees: List[str] = []
         if room_members is not None:
@@ -348,8 +382,9 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         await self.matrix_client.sync()
         self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
 
-        await self.set_power_members(room_members)
         await self.set_encryption(encrypt)
+        await self.set_power_members(room_members)
+        await self.set_communities(communities)
 
         await self.matrix_client.sync()
         self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]

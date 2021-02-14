@@ -7,8 +7,8 @@ the other Matrix Homeserver implementations.
 == Features
 
 * Manage Matrix users with Ansible (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst[synapse admin api]):
-** [x] register,
-** [x] update,
+** [x] register user (password can't be set though),
+** [x] update profile,
 ** [x] deactivate.
 * Manage Matrix rooms with Ansible:
 ** [x] create;
@@ -18,7 +18,7 @@ the other Matrix Homeserver implementations.
 ** [x] kick room members;
 ** [x] update room avatar.
 ** [ ] ability to reference room by the `id` instead of `alias`.
-** [ ] add room to list of communities
+** [x] add room to list of communities
 * Manage Matrix communities with Ansible:
 ** [x] create;
 ** [x] update;
@@ -171,7 +171,7 @@ endif::[]
 [source, yaml, title=Create community]
 ----
 ---
-- name: Community management
+- name: Create community and room
   connection: local
   hosts: localhost
   gather_facts: false
@@ -208,12 +208,26 @@ endif::[]
         state: present
 #      check_mode: yes
       register: community
+    - name: Unencrypted room exists in community
+      eraga.matrix.room:
+        matrix_uri: "{{uri}}"
+        matrix_user: "{{user}}"
+        matrix_token: "{{token}}"
+        matrix_domain: example.com
+        alias: ansible_example_room_1
+        name: Ansible Example
+        topic: This room is managed by ansible
+        communities:
+          - ansible_test_comm
+        room_members:
+          margaret: 50
+      register: room
 ----
 
 [source, yaml, title=Delete community"]
 ----
 ---
-- name: Community management
+- name: Remove community
   connection: local
   hosts: localhost
   gather_facts: false
