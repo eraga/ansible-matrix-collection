@@ -120,10 +120,6 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             }
 
     async def _become_room_admin(self, mxid):
-        # self.changes['_become_room_admin'] = {}
-        # self.changes['_become_room_admin']['mxid'] = mxid
-        # self.changes['_become_room_admin']['users_keys'] = self.matrix_room.power_levels.users
-        # self.changes['_become_room_admin']['mxid_level'] = self.matrix_room.power_levels.users[mxid]
         if mxid in self.matrix_room.power_levels.users.keys() \
                 and self.matrix_room.power_levels.users[mxid] == 100:
             return
@@ -205,7 +201,6 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
 
     async def set_power_members(self, room_members: Optional[Dict[str, int]]):
         if room_members is None:
-            # raise MatrixError("nonono")
             return
 
         power_members = {self.login_to_id(k): v for k, v in room_members.items()}
@@ -217,7 +212,6 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         )
 
         if len(not_changed.keys()) == len(power_members.keys()):
-            # raise MatrixError("{} == {}".format(not_changed.keys(), power_members.keys()))
             return
 
         old_users_set = set(self.matrix_room.users.keys())
@@ -229,13 +223,6 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         invited_users = list_subtract(new_users_set, not_changed_users)
 
         existing_members = self.matrix_room.power_levels.users
-
-        # self.changes['users']['old_power_levels'] = deepcopy(self.matrix_room.power_levels.users)
-        # self.changes['users']['changed_power_levels'] = dict_subtract(existing_members, not_changed)
-        # self.changes['users']['invited_power_levels'] = dict_subtract(power_members, not_changed)
-        # self.changes['users']['new_power_levels'] = power_members
-        # self.changes['users']['kicked'] = kicked_users
-        # self.changes['users']['invited'] = invited_users
 
         if self.matrix_room.creator in kicked_users:
             raise AnsibleMatrixError("Can't kick creator {}".format(self.matrix_room.creator))

@@ -7,7 +7,7 @@ from ansible_collections.eraga.matrix.plugins.module_utils.client_model import *
 
 @dataclass_json(undefined=Undefined.EXCLUDE)
 @dataclass
-class AnsibleMatrixAccount(object):
+class AnsibleMatrixAccount(Convertable):
     mxid: Optional[str] = None
     displayname: Optional[str] = None
     threepids: Optional[List[Dict[str, str]]] = None
@@ -19,28 +19,6 @@ class AnsibleMatrixAccount(object):
     appservice_id: Optional[str] = None
     consent_server_notice_sent: Optional[str] = None
     consent_version: Optional[str] = None
-
-    def dict(self) -> dict:
-        result = dict()
-        self_dict = asdict(self)
-
-        for k in self_dict:
-            if isinstance(self_dict[k], dict):
-                result[k] = self.__getattribute__(k).dict()
-            elif isinstance(self_dict[k], list):
-                result[k] = list(map(AnsibleMatrixAccount.__map_dict__, self.__getattribute__(k))
-                                 )
-            elif self_dict[k] is not None:
-                result[k] = self_dict[k]
-
-        return result
-
-    @staticmethod
-    def __map_dict__(it):
-        if isinstance(it, AnsibleMatrixAccount):
-            return it.dict()
-
-        return it
 
 
 class AnsibleMatrixUser(_AnsibleMatrixObject):

@@ -1,4 +1,5 @@
 import os
+from dataclasses import *
 from tempfile import TemporaryDirectory
 
 import aiofiles
@@ -12,12 +13,55 @@ from ansible_collections.eraga.matrix.plugins.module_utils.utils import url2file
 ANSIBLE_MATRIX_DEVICE_ID = "ansible-eraga-matrix-module"
 
 
+@dataclass
+class Convertable(object):
+    def dict(self) -> dict:
+        result = dict()
+        self_dict = asdict(self)
+
+        for k in self_dict:
+            if isinstance(self_dict[k], Convertable):
+                result[k] = self.__getattribute__(k).dict()
+            elif isinstance(self_dict[k], list):
+                result[k] = list(map(Convertable.__map_dict__, self.__getattribute__(k))
+                                 )
+            elif self_dict[k] is not None:
+                result[k] = self_dict[k]
+
+        return result
+
+    @staticmethod
+    def __map_dict__(it):
+        if isinstance(it, Convertable):
+            return it.dict()
+
+        return it
+
+
 class _AnsibleMatrixObject(object):
     def __init__(self, domain: str = ""):
         self.domain = domain
 
     def login_to_id(self, login: str) -> str:
+        if login.startswith("@") and ":" in login:
+            return login
+
         return "@{}:{}".format(login, self.domain)
+
+    def room_alias_to_mx_alias(self, alias: str) -> str:
+        if alias.startswith("!") and ":" in alias:
+            return alias
+
+        if alias.startswith("#") and ":" in alias:
+            return alias
+
+        return "#{}:{}".format(alias, self.domain)
+
+    def localpart_to_mx_group(self, localpart: str) -> str:
+        if localpart.startswith("+") and ":" in localpart:
+            return localpart
+
+        return "+{}:{}".format(localpart, self.domain)
 
 
 class AnsibleMatrixClient(_AnsibleMatrixObject, AsyncClient):
@@ -46,7 +90,8 @@ class AnsibleMatrixClient(_AnsibleMatrixObject, AsyncClient):
             return True
         return False
 
-    async def upload_image_if_new(self, in_image: Optional[str], old_mxc_url: Optional[str]) -> Optional[UploadResponse]:
+    async def upload_image_if_new(self, in_image: Optional[str], old_mxc_url: Optional[str]) -> Optional[
+        UploadResponse]:
         if in_image is None:
             return None
 
@@ -73,7 +118,8 @@ class AnsibleMatrixClient(_AnsibleMatrixObject, AsyncClient):
         if isinstance(resp, UploadResponse):
             return resp
         else:
-            raise AnsibleMatrixError(f"Failed to upload image. Failure status {resp.status_code} and reason: {resp.message}")
+            raise AnsibleMatrixError(
+                f"Failed to upload image. Failure status {resp.status_code} and reason: {resp.message}")
 
     # async def download_mxc(
     #         self,

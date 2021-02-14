@@ -1,4 +1,5 @@
 = Ansible Collection - eraga.matrix
+:toc:
 
 Collection of modules to manage Matrix Homeserver instance. Only tested with Synapse but may (partially) work with
 the other Matrix Homeserver implementations.
@@ -17,12 +18,13 @@ the other Matrix Homeserver implementations.
 ** [x] kick room members;
 ** [x] update room avatar.
 ** [ ] ability to reference room by the `id` instead of `alias`.
+** [ ] add room to list of communities
 * Manage Matrix communities with Ansible:
-** [ ] create;
-** [ ] update;
-** [ ] delete;
-** [ ] kick/invite members.
-** [ ] update avatar.
+** [x] create;
+** [x] update;
+** [x] delete;
+** [x] kick/invite members.
+** [x] update avatar.
 * Send messages to Matrix rooms with Ansible:
 ** [x] unencrypted messages:
 *** [x] markdown text;
@@ -33,7 +35,7 @@ the other Matrix Homeserver implementations.
 
 == Dependencies
 
-All dependencies are gathered in role `eraga.matrix.module_dependencies`.
+All dependencies are gathered in role `eraga.matrix.module_dependencies` for convenience.
 
 [source, yaml]
 ----
@@ -51,7 +53,7 @@ endif::[]
 
 == Examples
 
-=== Send a message to Matrix room
+=== Send a message to Matrix room with `eraga.matrix.send`
 
 [source, yaml]
 ----
@@ -85,7 +87,7 @@ endif::[]
 
 ----
 
-=== Sync user accounts and rooms from external Identity Provider (e.g. JetBrains Hub)
+=== Manage users and rooms with `eraga.matrix.user` and `eraga.matrix.room`
 
 [source, yaml]
 ----
@@ -161,4 +163,80 @@ endif::[]
       loop_control:
         loop_var: project
         label: "{{ project.key }}"
+----
+
+
+=== Manage communities with `eraga.matrix.community`
+
+[source, yaml, title=Create community]
+----
+---
+- name: Community management
+  connection: local
+  hosts: localhost
+  gather_facts: false
+  vars:
+    hub_uri: "https://hub.example.net/hub"
+    hub_token: "redacted"
+
+    matrix_uri: "https://matrix.example.net"
+    matrix_token: "redacted"
+    matrix_user: "ansible"
+
+    all_users: []
+  roles:
+    - eraga.matrix.module_dependencies
+  tasks:
+    - name: Community exists at matrix server with avatar from link
+      eraga.matrix.community:
+        matrix_uri: "{{uri}}"
+        matrix_user: "{{user}}"
+        matrix_token: "{{token}}"
+        matrix_domain: example.com
+        localpart: ansible_test_comm
+        name: Test Community
+        avatar: "http://example.com/path/to/ansible.svg"
+        description: This community is managed by Ansible
+        long_description: |
+          # ¡Hola!
+          Long description that supports markdown.
+        members:
+          - macarena
+          - @astarta:example.com
+        rooms:
+          - "!BCkWAqXKUSyROyodqx:eraga.net"
+        state: present
+#      check_mode: yes
+      register: community
+----
+
+[source, yaml, title=Delete community"]
+----
+---
+- name: Community management
+  connection: local
+  hosts: localhost
+  gather_facts: false
+  vars:
+    hub_uri: "https://hub.example.net/hub"
+    hub_token: "redacted"
+
+    matrix_uri: "https://matrix.example.net"
+    matrix_token: "redacted"
+    matrix_user: "ansible"
+
+    all_users: []
+  roles:
+    - eraga.matrix.module_dependencies
+  tasks:
+    - name: Community does not exist at server
+      eraga.matrix.community:
+        matrix_uri: "{{uri}}"
+        matrix_user: "{{user}}"
+        matrix_token: "{{token}}"
+        matrix_domain: example.com
+        localpart: ansible_test_comm
+        state: absent
+#      check_mode: yes
+      register: community
 ----
