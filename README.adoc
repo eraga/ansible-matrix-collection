@@ -24,11 +24,11 @@ the other Matrix Homeserver implementations.
 ** [ ] kick/invite members.
 ** [ ] update avatar.
 * Send messages to matrix rooms:
-** [x] unencrypted messages;
+** [x] unencrypted messages:
 *** [x] markdown text;
 *** [ ] images;
 *** [ ] file attachments;
-** [ ] encrypted messages;
+** [ ] encrypted messages.
 
 
 == Dependencies
@@ -51,12 +51,12 @@ endif::[]
 
 == Examples
 
-=== Send message to Matrix room
+=== Send a message to Matrix room
 
 [source, yaml]
 ----
 ---
-- name: Sync users and project rooms from JetBrains Hub instance to Matrix Synapse
+- name: Send a message to the room
   connection: local
   hosts: localhost
   gather_facts: false
@@ -67,6 +67,10 @@ endif::[]
   roles:
     - eraga.matrix.module_dependencies
   tasks:
+    - name: Set some fact
+      set_fact:
+        variables: "__variables__"
+
     - name: Send text to room
       eraga.matrix.send:
         matrix_uri: "{{matrix_uri}}"
@@ -77,7 +81,7 @@ endif::[]
         text: |
           ## Test message
 
-          *json*: {{room}}
+          It *supports* mardown and jinja {{variables}} (of course)
 
 ----
 
