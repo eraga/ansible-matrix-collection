@@ -15,7 +15,7 @@ the other Matrix Homeserver implementations.
 ** [x] delete (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/rooms.md#delete-room-api[synapse admin api]);
 ** [x] invite room members;
 ** [x] kick room members;
-** [ ] update room avatar.
+** [x] update room avatar.
 ** [ ] ability to reference room by the `id` instead of `alias`.
 * Manage Communities:
 ** [ ] create;

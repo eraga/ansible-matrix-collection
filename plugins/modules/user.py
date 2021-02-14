@@ -3,7 +3,7 @@ import copy
 
 from ansible.module_utils.basic import AnsibleModule
 
-from ansible_collections.eraga.matrix.plugins.module_utils.room_model import *
+from ansible_collections.eraga.matrix.plugins.module_utils.room import *
 from ansible_collections.eraga.matrix.plugins.module_utils.user import AnsibleMatrixUser
 
 ANSIBLE_METADATA = {

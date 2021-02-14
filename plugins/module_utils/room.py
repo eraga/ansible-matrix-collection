@@ -76,11 +76,6 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         if name == self.matrix_room.name:
             return
 
-        self.changes['name'] = {
-            'old': self.matrix_room.name,
-            'new': name
-        }
-
         pl_result = await self.matrix_client.room_put_state(
             room_id=self.matrix_room_id,
             event_type="m.room.name",
@@ -89,6 +84,11 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
 
         if isinstance(pl_result, RoomPutStateError):
             raise AnsibleMatrixError(pl_result.__dict__)
+
+        self.changes['name'] = {
+            'old': self.matrix_room.name,
+            'new': name
+        }
 
     # async def set_federate(self, federate):
     #     pass
@@ -264,11 +264,31 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         self.changes['users']['kicked'] = kicked_users
         self.changes['users']['invited'] = invited_users
 
+    async def set_avatar(self, in_image: Optional[str]):
+        resp = await self.matrix_client.upload_image_if_new(in_image, self.matrix_room.room_avatar_url)
+
+        if resp is None:
+            return
+
+        pl_result = await self.matrix_client.room_put_state(
+            room_id=self.matrix_room_id,
+            event_type="m.room.avatar",
+            content={"url": resp.content_uri}
+        )
+
+        if isinstance(pl_result, RoomPutStateError):
+            raise AnsibleMatrixError(pl_result.__dict__)
+
+        self.changes['avatar_url'] = {}
+        self.changes['avatar_url']['old'] = self.matrix_room.room_avatar_url
+        self.changes['avatar_url']['new'] = resp.content_uri
+
     async def matrix_room_update(
             self,
             visibility: Optional[str] = None,
             name: Optional[str] = None,
             topic: Optional[str] = None,
+            avatar: Optional[str] = None,
             federate: bool = False,
             preset: Optional[RoomPreset] = None,
             room_members: Optional[Dict[str, int]] = None,
@@ -285,6 +305,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         await self.matrix_client.sync()
 
         await asyncio.gather(
+            self.set_avatar(avatar),
             self.set_topic(topic),
             self.set_name(name),
             self.set_encryption(encrypt),
@@ -371,12 +392,12 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         elif isinstance(response, RoomSendResponse):
             self.changes['event_id'] = response.event_id
 
-    async def delete(self):
+    async def delete(self, block: bool = False, purge: bool = False):
         path = "/_synapse/admin/v1/rooms/{}/delete".format(self.matrix_room_id)
         method = "POST"
         data = {
-            "block": False,
-            "purge": True
+            "block": block,
+            "purge": purge
         }
 
         response = await self.matrix_client.send(

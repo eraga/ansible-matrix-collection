@@ -3,7 +3,7 @@ import copy
 
 from ansible.module_utils.basic import AnsibleModule
 
-from ansible_collections.eraga.matrix.plugins.module_utils.room_model import *
+from ansible_collections.eraga.matrix.plugins.module_utils.room import *
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -21,9 +21,22 @@ ANSIBLE_METADATA = {
     alias: example_room 
     name: Example Room
     topic: This is room managed by ansible 
+    preset: trusted_private_chat
+    avatar: "http://example.com/path/to/avatar.png"
+    
+- name: Room exists in community:
+  eraga.matrix.room:
+    matrix_uri: "https://matrix.example.com"
+    matrix_user:  ansiblebot
+    matrix_token: "{{token}}"
+    matrix_domain: example.com
+    alias: example_room 
+    name: Example Room
+    topic: This is room managed by ansible 
     federate: no
     visibility: private
     preset: trusted_private_chat
+    avatar: "/path/to/avatar.png"
     room_members:
       owner_login: 100
       admin_login: 90
@@ -52,6 +65,7 @@ async def run_module():
 
         name=dict(type='str', default=None),
         topic=dict(type='str', default=None),
+        avatar=dict(type='str', default=None),
         federate=dict(type='bool', default=False),
         visibility=dict(type='str', default="private",
                         choices=["private", "public"]),

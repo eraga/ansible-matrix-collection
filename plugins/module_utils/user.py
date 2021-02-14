@@ -135,7 +135,7 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
         self.changes['deactivated']['old'] = self.account.deactivated
         self.changes['deactivated']['new'] = deactivated
 
-    async def upload_avatar(self, in_image: Optional[str]):
+    async def set_avatar(self, in_image: Optional[str]):
         resp = await self.matrix_client.upload_image_if_new(in_image, self.account.avatar_url)
 
         if resp is None:
@@ -156,7 +156,7 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
             admin: Optional[bool] = None,
     ):
         # self.changes['print'] = avatar
-        await self.upload_avatar(avatar)
+        await self.set_avatar(avatar)
         await self.set_displayname(displayname)
         await self.set_admin(admin)
         await self._load_account()

@@ -1,6 +1,6 @@
 import asyncio
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.eraga.matrix.plugins.module_utils.room_model import *
+from ansible_collections.eraga.matrix.plugins.module_utils.room import *
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
