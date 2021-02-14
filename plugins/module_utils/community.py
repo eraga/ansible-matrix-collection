@@ -425,14 +425,6 @@ class AnsibleMatrixCommunity(_AnsibleMatrixObject):
                     raise AnsibleMatrixError(f"{self.localpart} requires 'name' to be created")
                 await self._create(name)
 
-            # await self.set_name(name)
-            # await self.set_description(description)
-            # await self.set_long_description(long_description)
-            # await self.set_avatar(avatar)
-            # await self.set_visibility(visibility)
-            # await self.set_members(members)
-            # await self.set_rooms(rooms)
-
             await asyncio.gather(
                 self.set_name(name),
                 self.set_description(description),
@@ -460,6 +452,7 @@ class AnsibleMatrixCommunity(_AnsibleMatrixObject):
                 "Authorization": "Bearer {}".format(self.matrix_client.access_token)
             }
         )
+
         if response.status == 404:
             return
 
