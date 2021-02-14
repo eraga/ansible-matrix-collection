@@ -70,7 +70,7 @@ async def run_module():
         admin=dict(type='bool', default=None),
 
         state=dict(type="str", default="present",
-                   choices=["present", "absent", "deactivated"])
+                   choices=["present", "deactivated"])
     )
 
     result = dict(
@@ -117,12 +117,7 @@ async def run_module():
             del params['login']
             del params['state']
 
-            if state == 'absent':
-                raise NotImplementedError
-                # await user.delete()
-                # result['changed'] = bool(result['changed_fields'])
-
-            elif state == 'present':
+            if state == 'present':
                 await user.update(**params)
                 result['changed'] = bool(result['changed_fields'])
 
