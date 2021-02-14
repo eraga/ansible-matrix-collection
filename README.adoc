@@ -5,11 +5,11 @@ the other Matrix Homeserver implementations.
 
 == Features
 
-* Manage Users (synapse server only via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst[synapse admin api]):
+* Manage Matrix users with Ansible (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst[synapse admin api]):
 ** [x] register,
 ** [x] update,
 ** [x] deactivate.
-* Manage Rooms:
+* Manage Matrix rooms with Ansible:
 ** [x] create;
 ** [x] update;
 ** [x] delete (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/rooms.md#delete-room-api[synapse admin api]);
@@ -17,13 +17,13 @@ the other Matrix Homeserver implementations.
 ** [x] kick room members;
 ** [x] update room avatar.
 ** [ ] ability to reference room by the `id` instead of `alias`.
-* Manage Communities:
+* Manage Matrix communities with Ansible:
 ** [ ] create;
 ** [ ] update;
 ** [ ] delete;
 ** [ ] kick/invite members.
 ** [ ] update avatar.
-* Send messages to matrix rooms:
+* Send messages to Matrix rooms with Ansible:
 ** [x] unencrypted messages:
 *** [x] markdown text;
 *** [ ] images;
