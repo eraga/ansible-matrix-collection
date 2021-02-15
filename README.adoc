@@ -4,36 +4,78 @@
 Collection of modules to manage Matrix Homeserver instance. Only tested with Synapse but may (partially) work with
 the other Matrix Homeserver implementations.
 
-== Features
+== Modules
 
-* Manage Matrix users with Ansible (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst[synapse admin api]):
-** [x] register user (password can't be set though),
-** [x] update profile,
-** [x] deactivate.
-* Manage Matrix rooms with Ansible:
-** [x] create;
-** [x] update;
-** [x] delete (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/rooms.md#delete-room-api[synapse admin api]);
-** [x] invite room members;
-** [x] kick room members;
-** [x] update room avatar.
-** [ ] ability to reference room by the `id` instead of `alias`.
-** [x] add room to list of communities
-* Manage Matrix communities with Ansible:
-** [x] create;
-** [x] update;
-** [x] delete;
-** [x] kick/invite members.
-** [x] update avatar.
-* Send messages to Matrix rooms with Ansible:
-** [x] unencrypted messages:
-*** [x] markdown text;
-*** [ ] images;
-*** [ ] file attachments;
-** [ ] encrypted messages.
+[cols="2a,1,4a"]
+|===
+|Name |Check mode |Description and features
+
+|`eraga.matrix.user`
+|yes
+|Manage Matrix users with Ansible (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst[synapse admin api]):
+
+* [x] register user (password can't be set though),
+* [x] update profile,
+* [x] deactivate.
+
+|`eraga.matrix.room`
+|yes
+|Manage Matrix rooms with Ansible:
+
+* [x] create;
+* [x] update;
+* [x] delete (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/rooms.md#delete-room-api[synapse admin api]);
+* [x] invite room members;
+* [x] kick room members;
+* [x] update room avatar.
+* [ ] ability to reference room by the `id` instead of `alias`.
+* [x] add room to list of communities
+
+|`eraga.matrix.community`
+|yes
+|Manage Matrix communities with Ansible:
+
+* [x] create;
+* [x] update;
+* [x] delete;
+* [x] kick/invite members.
+* [x] update avatar.
+
+|`eraga.matrix.send`
+|no
+|Send messages to Matrix rooms with Ansible:
+
+* [x] unencrypted messages:
+** [x] markdown text;
+** [ ] images;
+** [ ] file attachments;
+* [ ] encrypted messages.
+|===
 
 
-== Dependencies
+== Installing this collection
+
+You can install the `eraga.matrix` collection with the Ansible Galaxy CLI:
+
+[source,bash]
+----
+ansible-galaxy install git+https://github.com/eraga/ansible-matrix-collection.git,v1.0.0-rc1
+----
+
+You can also include it in a `requirements.yml` file and install it with `ansible-galaxy collection install -r requirements.yml`, using the format:
+
+[source,yaml]
+----
+---
+collections:
+  - name: https://github.com/eraga/ansible-matrix-collection.git
+    type: git
+    vesrion: master
+----
+
+== Usage
+
+=== Module dependencies
 
 All dependencies are gathered in role `eraga.matrix.module_dependencies` for convenience.
 
@@ -49,9 +91,6 @@ ifdef::env-github[]
     - eraga.matrix.module_dependencies
 endif::[]
 ----
-
-
-== Examples
 
 === Send a message to Matrix room with `eraga.matrix.send`
 
@@ -224,7 +263,7 @@ endif::[]
       register: room
 ----
 
-[source, yaml, title=Delete community"]
+[source, yaml, title=Delete community]
 ----
 ---
 - name: Remove community
