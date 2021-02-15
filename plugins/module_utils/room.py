@@ -38,6 +38,9 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         if isinstance(room_alias_response, RoomResolveAliasResponse):
             self.matrix_room_id = room_alias_response.room_id
 
+            if self.matrix_room_id in self.matrix_client.invited_rooms:
+                self.matrix_client.room_invite()
+
             # Check if already in room
             rooms_resp = await self.matrix_client.joined_rooms()
 
@@ -55,10 +58,13 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
                 else:
                     raise AnsibleMatrixError(f"Room exists, but couldn't join: {join_resp}")
 
-            await self.matrix_client.sync()
+            sync_response = await self.matrix_client.sync()
 
             if self.matrix_room_id in self.matrix_client.rooms:
                 self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
+                latest_event: Optional[Event] = sync_response.rooms.join[self.matrix_room_id].timeline.events.pop()
+                await self.matrix_client.room_read_markers(self.matrix_room_id, latest_event.event_id)
+                # self.changes['latest_event'] = latest_event
             else:
                 raise AnsibleMatrixError(
                     f"{self.matrix_room_id} not found in {self.matrix_client.rooms} for alias {self.matrix_room_fq_alias}")
@@ -222,15 +228,15 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             self.changes['community'] = communities_changes
 
     async def set_power_levels(self, content: Dict) -> RoomPutStateResponse:
-        pl_result = await self.matrix_client.room_put_state(
+        result = await self.matrix_client.room_put_state(
             room_id=self.matrix_room_id,
             event_type="m.room.power_levels",
             content=content
         )
-        if isinstance(pl_result, RoomPutStateError):
-            raise AnsibleMatrixError("{}".format(pl_result.message))
+        if isinstance(result, RoomPutStateError):
+            raise AnsibleMatrixError(f"{result.status_code}: '{result.message}' when setting m.room.power_levels with {content}")
 
-        return pl_result
+        return result
 
     async def set_power_level_overrides(self, content: Optional[Dict]):
         if content is None:
@@ -255,7 +261,12 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             return
 
         power_members = {self.login_to_id(k): v for k, v in room_members.items()}
-        power_members[self.matrix_room.creator] = 100
+        power_members[self.matrix_client.user] = 100
+
+        # We can't demote Admins :(
+        for user in self.matrix_room.power_levels.users:
+            if self.matrix_room.power_levels.users[user] == 100:
+                power_members[user] = 100
 
         not_changed = dicts_intersection(
             self.matrix_room.power_levels.users,
@@ -266,7 +277,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             return
 
         old_users_set = set(self.matrix_room.users.keys())
-        new_users_set = set(map(lambda it: self.login_to_id(it), room_members.keys()))
+        new_users_set = set(map(lambda it: self.login_to_id(it), power_members.keys()))
         new_users_set.add(self.matrix_room.creator)
 
         not_changed_users = set(old_users_set & new_users_set)
@@ -274,6 +285,21 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         invited_users = list_subtract(new_users_set, not_changed_users)
 
         existing_members = self.matrix_room.power_levels.users
+
+        # self.changes['users'] = {}
+        # self.changes['users']['old_users_set'] = old_users_set
+        # self.changes['users']['new_users_set'] = new_users_set
+        # self.changes['users']['old_power_levels'] = deepcopy(self.matrix_room.power_levels.users)
+        # self.changes['users']['changed_power_levels'] = dict_subtract(existing_members, not_changed)
+        # self.changes['users']['invited_power_levels'] = dict_subtract(power_members, not_changed)
+        # self.changes['users']['new_power_levels'] = power_members
+        # self.changes['users']['kicked'] = kicked_users
+        # self.changes['users']['invited'] = invited_users
+        #
+        # raise AnsibleMatrixError("Shit!!")
+
+        if self.matrix_client.user in kicked_users:
+            raise AnsibleMatrixError("Can't kick self: {}".format(self.matrix_client.user))
 
         if self.matrix_room.creator in kicked_users:
             raise AnsibleMatrixError("Can't kick creator {}".format(self.matrix_room.creator))
@@ -350,7 +376,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             self.set_name(name),
             self.set_visibility(visibility),
             self.set_power_level_overrides(power_level_override),
-            self.set_communities(communities)
+            self.set_communities(communities),
         )
 
     def matrix_room_exists(self) -> bool:
