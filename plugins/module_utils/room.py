@@ -38,10 +38,30 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         if isinstance(room_alias_response, RoomResolveAliasResponse):
             self.matrix_room_id = room_alias_response.room_id
 
+            # Check if already in room
+            rooms_resp = await self.matrix_client.joined_rooms()
+
+            if isinstance(rooms_resp, JoinedRoomsError):
+                raise AnsibleMatrixError(f"Couldn't get joined rooms: {rooms_resp.status_code} {rooms_resp.message}")
+            elif room_alias_response.room_id in rooms_resp.rooms:
+                pass
+            else:
+                # Try to join room
+                join_resp = await self.matrix_client.join(self.matrix_room_id)
+
+                # If successful, return, changed=true
+                if isinstance(join_resp, JoinResponse):
+                    pass
+                else:
+                    raise AnsibleMatrixError(f"Room exists, but couldn't join: {join_resp}")
+
             await self.matrix_client.sync()
 
             if self.matrix_room_id in self.matrix_client.rooms:
                 self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
+            else:
+                raise AnsibleMatrixError(
+                    f"{self.matrix_room_id} not found in {self.matrix_client.rooms} for alias {self.matrix_room_fq_alias}")
         else:
             self.matrix_room_id = None
 
@@ -319,7 +339,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             raise AnsibleMatrixError("Not in room {}, can't manage it".format(self.matrix_room_fq_alias))
 
         self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
-        await self._become_room_admin(self.matrix_client.user)
+        # await self._become_room_admin(self.matrix_client.user)
         await self.set_power_members(room_members)
         await self.matrix_client.sync()
 
@@ -343,6 +363,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             visibility: str = "private",
             name: Optional[str] = None,
             topic: Optional[str] = None,
+            avatar: Optional[str] = None,
             federate: bool = False,
             preset: Optional[str] = None,
             room_members: Optional[Dict[str, int]] = None,
@@ -383,6 +404,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
 
         await self.set_encryption(encrypt)
+        await self.set_avatar(avatar)
         await self.set_power_members(room_members)
         await self.set_communities(communities)
 
@@ -434,7 +456,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
     def matrix_room_to_dict(self) -> dict:
         room = self.matrix_room
         room_dict = dict()
-        room_dict['id'] = room.room_id
+        room_dict['id'] = self.matrix_room_id
         room_dict['canonical_alias'] = room.canonical_alias
         room_dict['users'] = room.users.keys()
         room_dict['user_levels'] = list(
