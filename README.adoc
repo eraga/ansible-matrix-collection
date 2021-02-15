@@ -59,7 +59,7 @@ You can install the `eraga.matrix` collection with the Ansible Galaxy CLI:
 
 [source,bash]
 ----
-ansible-galaxy install git+https://github.com/eraga/ansible-matrix-collection.git,v1.0.0-rc1
+ansible-galaxy install git+https://github.com/eraga/ansible-matrix-collection.git,v1.0.0-rc2
 ----
 
 You can also include it in a `requirements.yml` file and install it with `ansible-galaxy collection install -r requirements.yml`, using the format:
@@ -70,7 +70,7 @@ You can also include it in a `requirements.yml` file and install it with `ansibl
 collections:
   - name: https://github.com/eraga/ansible-matrix-collection.git
     type: git
-    vesrion: master
+    version: v1.0.0-rc2
 ----
 
 == Usage
