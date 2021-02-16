@@ -1,0 +1,14 @@
+id: "{{eraga_matrix_ansible_appservice_id}}" # Can be any helpful identifier
+hs_token: "{{matrix_ansible_appservice_hs_token}}" # hs_token and as_token must be unique and secret
+as_token: "{{matrix_ansible_appservice_as_token}}"
+namespaces:
+  users: []
+#    - exclusive: true
+#      regex: '@yourbot:example.org'  # Set this to your bot's user ID.
+  aliases: []
+#    - exclusive: false
+#      regex: '#.*:example.org'  # Change the domain to match your server.
+  rooms: []
+url: null  # Important! The bot doesn't receive transactions, so set this explicitly to null.
+sender_localpart: "{{eraga_matrix_ansible_appservice_mxid}}"  # Use something other than your bot's localpart.
+rate_limited: false  # Important! The bot is noisy.

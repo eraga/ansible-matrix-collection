@@ -1,0 +1,31 @@
+---
+eraga_matrix_ansible_appservice_enabled: yes
+
+eraga_matrix_ansible_appservice_id: eraga_matrix_ansible
+eraga_matrix_ansible_appservice_mxid: ansible_service
+
+# Defaults suppose that https://github.com/spantaleev/matrix-docker-ansible-deploy
+# was used to deploy matrix synapse
+# todo: make it possible to run in conjunction with `spantaleev/matrix-docker-ansible-deploy` roles
+eraga_matrix_ansible_appservice_homeserver_config_path: /matrix/synapse/config/homeserver.yaml
+eraga_matrix_ansible_appservice_config_path: "{{matrix_base_data_path | default('/matrix')}}/eraga_matrix_ansible/config"
+
+eraga_matrix_ansible_appservice_user: matrix
+eraga_matrix_ansible_appservice_group: matrix
+
+eraga_matrix_ansible_appservice_hs_token: ''
+eraga_matrix_ansible_appservice_as_token: ''
+
+eraga_matrix_ansible_appservice_registration_yaml: |
+  id: "{{ eraga_matrix_ansible_appservice_id }}"
+  as_token: "{{ eraga_matrix_ansible_appservice_as_token }}"
+  hs_token: "{{ eraga_matrix_ansible_appservice_hs_token }}"
+  namespaces:
+      users: []
+      aliases: []
+      rooms: []
+  url: null
+  sender_localpart: "{{ansible_service}}"
+  rate_limited: false
+
+eraga_matrix_ansible_appservice_registration: "{{ eraga_matrix_ansible_appservice_registration_yaml|from_yaml }}"

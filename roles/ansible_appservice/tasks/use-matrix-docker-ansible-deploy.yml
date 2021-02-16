@@ -1,0 +1,41 @@
+---
+# If the matrix-synapse role is not used, `matrix_synapse_role_executed` won't exist.
+# We don't want to fail in such cases.
+- name: Fail if matrix-synapse role already executed
+  fail:
+    msg: >-
+      The 'eraga.matrix.ansible_appservice' role should be executed before the matrix-synapse role.
+  when: "matrix_synapse_role_executed|default(False)"
+
+- name: Ensure eRaga Matrix Ansible appservice path exist
+  file:
+    path: "{{ item }}"
+    recurse: true
+    state: directory
+    mode: 0750
+    owner: "{{ matrix_user_username }}"
+    group: "{{ matrix_user_groupname }}"
+  with_items:
+    - "{{ eraga_matrix_ansible_appservice_config_path }}"
+
+- name: Ensure mautrix-telegram registration.yaml installed
+  copy:
+    content: "{{ eraga_matrix_ansible_appservice_registration|to_nice_yaml }}"
+    dest: "{{ eraga_matrix_ansible_appservice_config_path }}/registration.yaml"
+    mode: 0644
+    owner: "{{ matrix_user_username }}"
+    group: "{{ matrix_user_groupname }}"
+
+
+# If the matrix-synapse role is not used, these variables may not exist.
+- set_fact:
+    matrix_synapse_container_extra_arguments: >
+      {{ matrix_synapse_container_extra_arguments|default([]) }}
+      +
+      ["--mount type=bind,src={{ eraga_matrix_ansible_appservice_config_path }}/registration.yaml,dst=/eraga-matrix-ansible-appservice-registration.yaml,ro"]
+
+    matrix_synapse_app_service_config_files: >
+      {{ matrix_synapse_app_service_config_files|default([]) }}
+      +
+      {{ ["/eraga-matrix-ansible-appservice-registration.yaml"] }}
+  when: eraga_matrix_ansible_appservice_enabled|bool
