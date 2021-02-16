@@ -1,8 +1,12 @@
 ---
 - name: Load tasks to work with 'spantaleev/matrix-docker-ansible-deploy' roles
-  include_tasks: use-matrix-docker-ansible-deploy.yml
+  import_tasks: use-matrix-docker-ansible-deploy.yml
   when: matrix_synapse_enabled|bool
+  tags:
+    - setup-all
 
 - name: Load tasks to work with generic install (untested)
-  include_tasks: patch-generic-install.yml
+  import_tasks: patch-generic-install.yml
   when: not matrix_synapse_enabled|bool
+  tags:
+    - setup-all

@@ -25,7 +25,7 @@ eraga_matrix_ansible_appservice_registration_yaml: |
       aliases: []
       rooms: []
   url: null
-  sender_localpart: "{{ansible_service}}"
+  sender_localpart: "{{eraga_matrix_ansible_appservice_mxid}}"
   rate_limited: false
 
 eraga_matrix_ansible_appservice_registration: "{{ eraga_matrix_ansible_appservice_registration_yaml|from_yaml }}"

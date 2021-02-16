@@ -7,7 +7,7 @@
       The 'eraga.matrix.ansible_appservice' role should be executed before the matrix-synapse role.
   when: "matrix_synapse_role_executed|default(False)"
 
-- name: Ensure eRaga Matrix Ansible appservice path exist
+- name: Ensure 'eraga.matrix.ansible_appservice' config path exist
   file:
     path: "{{ item }}"
     recurse: true
@@ -18,7 +18,7 @@
   with_items:
     - "{{ eraga_matrix_ansible_appservice_config_path }}"
 
-- name: Ensure mautrix-telegram registration.yaml installed
+- name: Ensure 'eraga.matrix.ansible_appservice' registration.yaml installed
   copy:
     content: "{{ eraga_matrix_ansible_appservice_registration|to_nice_yaml }}"
     dest: "{{ eraga_matrix_ansible_appservice_config_path }}/registration.yaml"
