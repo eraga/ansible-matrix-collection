@@ -2,6 +2,7 @@ import asyncio
 from typing import Set
 
 from markdown import markdown
+from nio.responses import WhoamiResponse
 
 from ansible_collections.eraga.matrix.plugins.module_utils.client_model import _AnsibleMatrixObject
 from ansible_collections.eraga.matrix.plugins.module_utils.client_model import *
@@ -29,7 +30,10 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         self.communities: Set[str] = set()
 
     async def __aenter__(self):
+        self.matrix_client.sync()
         room_alias_response = await self.matrix_client.room_resolve_alias(self.matrix_room_fq_alias)
+
+        # raise AnsibleMatrixError((await self.matrix_client.whoami()).user_id)
         # Sync encryption keys with the server
         # Required for participating in encrypted rooms
         if self.matrix_client.should_upload_keys:
@@ -54,9 +58,13 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
 
                 # If successful, return, changed=true
                 if isinstance(join_resp, JoinResponse):
+                    self.changes['joined'] = join_resp.room_id
                     pass
-                else:
-                    raise AnsibleMatrixError(f"Room exists, but couldn't join: {join_resp}")
+                # else:
+                    # self.matrix_client.user_id = self.matrix_client.login_to_id(self.matrix_client.user)
+                    # self.changes['debug'] = await self.matrix_client.get_profile()
+                    # pass
+                    # raise AnsibleMatrixError(f"Room exists, but couldn't join: {join_resp}. Profile: {self.matrix_client.user_id}")
 
             sync_response = await self.matrix_client.sync()
 
@@ -66,8 +74,9 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
                 await self.matrix_client.room_read_markers(self.matrix_room_id, latest_event.event_id)
                 # self.changes['latest_event'] = latest_event
             else:
-                raise AnsibleMatrixError(
-                    f"{self.matrix_room_id} not found in {self.matrix_client.rooms} for alias {self.matrix_room_fq_alias}")
+                pass
+                # raise AnsibleMatrixError(
+                #     f"{self.matrix_room_id} not found in {self.matrix_client.rooms} for alias {self.matrix_room_fq_alias}")
         else:
             self.matrix_room_id = None
 
@@ -360,14 +369,12 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             power_level_override: Optional[Dict[str, Any]] = None,
             communities: Optional[List[str]] = None
     ):
-        await self.matrix_client.sync()
-        if self.matrix_room_id not in self.matrix_client.rooms:
-            raise AnsibleMatrixError("Not in room {}, can't manage it".format(self.matrix_room_fq_alias))
+        # self.matrix_client.login()
+        await self.sync_details()
 
-        self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
         # await self._become_room_admin(self.matrix_client.user)
         await self.set_power_members(room_members)
-        await self.matrix_client.sync()
+        await self.sync_details()
 
         await asyncio.gather(
             self.set_encryption(encrypt),
@@ -426,16 +433,14 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
 
         self.matrix_room_id = result.room_id
 
-        await self.matrix_client.sync()
-        self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
+        await self.sync_details()
 
         await self.set_encryption(encrypt)
         await self.set_avatar(avatar)
         await self.set_power_members(room_members)
         await self.set_communities(communities)
 
-        await self.matrix_client.sync()
-        self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
+        await self.sync_details()
 
         self.changes['created'] = True
 
@@ -480,6 +485,8 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         self.changes['delete'] = await response.json()
 
     def matrix_room_to_dict(self) -> dict:
+        if self.matrix_room is None:
+            return {}
         room = self.matrix_room
         room_dict = dict()
         room_dict['id'] = self.matrix_room_id
@@ -508,3 +515,63 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         room_dict['room_version'] = room.room_version
         room_dict['history_visibility'] = room.history_visibility
         return room_dict
+
+    async def sync_details(self):
+        if self.matrix_room_id not in self.matrix_client.rooms:
+            await self.room_admin_get_details()
+            if self.matrix_room is None:
+                raise AnsibleMatrixError("Not in room {}, can't manage it".format(self.matrix_room_fq_alias))
+        else:
+            self.matrix_room = self.matrix_client.rooms[self.matrix_room_id]
+
+    async def room_admin_get_details(self):
+        # GET /_synapse/admin/v1/rooms/<room_id>
+        path = "/_synapse/admin/v1/rooms/{}".format(self.matrix_room_id)
+        method = "GET"
+
+        response = await self.matrix_client.send(
+            method, path, None, headers={
+                "Content-Type": "application/json",
+                "Authorization": "Bearer {}".format(self.matrix_client.access_token)
+            }
+        )
+        response.raise_for_status()
+        room_info = await response.json()
+
+        self.matrix_room = MatrixRoom(
+            self.matrix_room_id,
+            self.matrix_client.user,
+            room_info['encryption']
+        )
+
+        self.matrix_room.name = room_info['name']
+        self.matrix_room.room_avatar_url = room_info['avatar']
+        self.matrix_room.topic = room_info['topic']
+        self.matrix_room.canonical_alias = room_info['canonical_alias']
+        self.matrix_room.creator = room_info['creator']
+        self.matrix_room.federate = room_info['federatable']
+        # self.matrix_room = room_info['public']
+        self.matrix_room.join_rule = room_info['join_rules']
+        self.matrix_room.guest_access = room_info['guest_access']
+        self.matrix_room.history_visibility = room_info['history_visibility']
+
+        #
+        # {
+        #     "room_id": "!mscvqgqpHYjBGDxNym:matrix.org",
+        #     "name": "Music Theory",
+        #     "avatar": "mxc://matrix.org/AQDaVFlbkQoErdOgqWRgiGSV",
+        #     "topic": "Theory, Composition, Notation, Analysis",
+        #     "canonical_alias": "#musictheory:matrix.org",
+        #     "joined_members": 127,
+        #     "joined_local_members": 2,
+        #     "joined_local_devices": 2,
+        #     "version": "1",
+        #     "creator": "@foo:matrix.org",
+        #     "encryption": null,
+        #     "federatable": true,
+        #     "public": true,
+        #     "join_rules": "invite",
+        #     "guest_access": null,
+        #     "history_visibility": "shared",
+        #     "state_events": 93534
+        # }

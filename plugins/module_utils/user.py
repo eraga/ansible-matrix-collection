@@ -36,6 +36,7 @@ class AnsibleMatrixUser(_AnsibleMatrixObject):
         self.account: Optional[AnsibleMatrixAccount] = None
 
     async def __aenter__(self):
+        await self.matrix_client.sync()
         await self._load_account()
 
         return self

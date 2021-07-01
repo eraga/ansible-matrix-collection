@@ -16,7 +16,6 @@ ANSIBLE_METADATA = {
 - name: User exists at matrix server  wit avatar from file system
   eraga.matrix.user:
     matrix_uri: "https://matrix.example.com"
-    matrix_user:  ansiblebot
     matrix_token: "{{token}}"
     matrix_domain: example.com
     login: ivan     
@@ -26,7 +25,6 @@ ANSIBLE_METADATA = {
 - name: User exists at matrix server
   eraga.matrix.user:
     matrix_uri: "https://matrix.example.com"
-    matrix_user:  ansiblebot
     matrix_token: "{{token}}"
     matrix_domain: example.com
     login: johnny     
@@ -36,7 +34,6 @@ ANSIBLE_METADATA = {
 - name: User exists and deactivated at matrix server
   eraga.matrix.user:
     matrix_uri: "https://matrix.example.com"
-    matrix_user:  ansiblebot
     matrix_token: "{{token}}"
     matrix_domain: example.com
     login: c3p0     
@@ -45,7 +42,6 @@ ANSIBLE_METADATA = {
 - name: Get account info from Matrix server
   eraga.matrix.user:
     matrix_uri: "https://matrix.example.com"
-    matrix_user:  ansiblebot
     matrix_token: "{{token}}"
     matrix_domain: example.com
     login: d_trump     
@@ -59,7 +55,7 @@ async def run_module():
     # the module
     module_args = dict(
         matrix_uri=dict(type="str", required=True),
-        matrix_user=dict(type="str", required=True),
+        matrix_user=dict(type="str", default=None),
         matrix_domain=dict(type="str", required=True),
         matrix_token=dict(type="str", required=True, no_log=True),
 

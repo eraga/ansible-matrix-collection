@@ -4,9 +4,11 @@
   when: matrix_synapse_enabled|bool
   tags:
     - setup-all
+    - setup-eraga-matrix-app-service
 
 - name: Load tasks to work with generic install (untested)
   import_tasks: patch-generic-install.yml
   when: not matrix_synapse_enabled|bool
   tags:
     - setup-all
+    - setup-eraga-matrix-app-service

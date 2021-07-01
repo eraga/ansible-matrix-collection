@@ -5,6 +5,8 @@ from tempfile import TemporaryDirectory
 import aiofiles
 import aiofiles.os
 from nio import *
+from nio.responses import WhoamiResponse
+from nio.api import _FilterT
 
 from ansible_collections.eraga.matrix.plugins.module_utils.errors import AnsibleMatrixError
 from ansible_collections.eraga.matrix.plugins.module_utils.utils import url2file, detect_mime_type, \
@@ -42,7 +44,10 @@ class _AnsibleMatrixObject(object):
     def __init__(self, domain: str = ""):
         self.domain = domain
 
-    def login_to_id(self, login: str) -> str:
+    def login_to_id(self, login: Optional[str]) -> Optional[str]:
+        if login is None:
+            return None
+
         if login.startswith("@") and ":" in login:
             return login
 
@@ -65,7 +70,7 @@ class _AnsibleMatrixObject(object):
 
 
 class AnsibleMatrixClient(_AnsibleMatrixObject, AsyncClient):
-    def __init__(self, domain: str, uri: str, token: str, user: str):
+    def __init__(self, domain: str, uri: str, token: str, user: Optional[str] = None):
         _AnsibleMatrixObject.__init__(self, domain=domain)
         AsyncClient.__init__(
             self,
@@ -75,6 +80,27 @@ class AnsibleMatrixClient(_AnsibleMatrixObject, AsyncClient):
         )
 
         self.access_token = token
+
+    async def sync(
+            self,
+            timeout: Optional[int] = 0,
+            sync_filter: _FilterT = None,
+            since: Optional[str] = None,
+            full_state: Optional[bool] = None,
+            set_presence: Optional[str] = None,
+    ) -> Union[SyncResponse, SyncError]:
+        if self.user is None:
+            whoami: WhoamiResponse = await self.whoami()
+            self.user_id = whoami.user_id
+            self.user = whoami.user_id
+
+        return await super(AnsibleMatrixClient, self).sync(
+            timeout,
+            sync_filter,
+            since,
+            full_state,
+            set_presence,
+        )
 
     async def is_same_image(self, image, image_mime_type, mxc_url) -> bool:
         file_stat = await aiofiles.os.stat(image)

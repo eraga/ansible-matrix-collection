@@ -55,12 +55,13 @@ ANSIBLE_METADATA = {
     community: Example    
 """
 
+
 async def run_module():
     # define the available arguments/parameters that a user can pass to
     # the module
     module_args = dict(
         matrix_uri=dict(type="str", required=True),
-        matrix_user=dict(type="str", required=True),
+        matrix_user=dict(type="str", default=None),
         matrix_domain=dict(type="str", required=True),
         matrix_token=dict(type="str", required=True, no_log=True),
 
