@@ -73,6 +73,15 @@ collections:
     version: v1.0.0-rc2
 ----
 
+=== Python dependencies
+
+Python 3.6 or higher is required for matrix modules to execute as well as following dependencies:
+
+[source,yaml]
+----
+pip install dataclasses==0.6 dataclasses-json==0.5.2 requests markdown aiofiles "pycryptodome==3.9.9" "matrix-nio[e2e]" cairosvg
+----
+
 == Usage
 
 === Module dependencies
