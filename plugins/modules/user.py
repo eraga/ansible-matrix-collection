@@ -1,6 +1,7 @@
 import asyncio
 import copy
 
+import aiohttp
 from ansible.module_utils.basic import AnsibleModule
 
 from ansible_collections.eraga.matrix.plugins.module_utils.room import *
@@ -131,6 +132,9 @@ async def run_module():
         except AnsibleMatrixError as e:
             result['changed'] = bool(result['changed_fields'])
             module.fail_json(msg='MatrixError={}'.format(e), **result)
+        except aiohttp.client_exceptions.ClientResponseError as e:
+            result['changed'] = False
+            module.fail_json(msg='ClientResponseError={}'.format(e), **result)
         finally:
             await user.__aexit__()
 
