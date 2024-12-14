@@ -134,7 +134,7 @@ async def run_module():
             module.fail_json(msg='MatrixError={}'.format(e), **result)
         except aiohttp.client_exceptions.ClientResponseError as e:
             result['changed'] = False
-            module.fail_json(msg='ClientResponseError={}'.format(e), **result)
+            module.exit_json(skipped=True, msg="ClientResponseError".format(e))
         finally:
             await user.__aexit__()
 
