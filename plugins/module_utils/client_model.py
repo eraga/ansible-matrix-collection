@@ -1,3 +1,4 @@
+# noinspection PyPackageRequirements
 import os
 from dataclasses import *
 from tempfile import TemporaryDirectory
@@ -105,7 +106,7 @@ class AnsibleMatrixClient(_AnsibleMatrixObject, AsyncClient):
     async def is_same_image(self, image, image_mime_type, mxc_url) -> bool:
         file_stat = await aiofiles.os.stat(image)
         server, media = mxc_url.replace("mxc://", "").split("/")
-        resp = await self.download(server, media)
+        resp = await self.download(mxc=mxc_url) #, server, media)
         if isinstance(resp, DownloadError):
             raise AnsibleMatrixError(
                 f"Failed to download image from '{mxc_url}'. Failure status {resp.status_code} and reason: {resp.message}")

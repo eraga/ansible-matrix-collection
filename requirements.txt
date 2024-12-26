@@ -1,0 +1,11 @@
+matrix-nio[e2e]
+cairosvg
+multidict
+yarl
+async_timeout
+idna_ssl
+charset_normalizer
+aiosignal
+dataclasses
+dataclasses-json
+markdown
