@@ -206,35 +206,35 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             else:
                 raise AnsibleMatrixError("Once enabled, encryption cannot be disabled.")
 
-    async def set_communities(self, localparts: Optional[List[str]]):
-        if localparts is None:
-            return
-
-        communities_changes: List[Dict[str, Any]] = []
-        for localpart in localparts:
-            community_changes: Dict[str, Any] = {}
-
-            community = AnsibleMatrixCommunity(
-                matrix_client=self.matrix_client,
-                localpart=localpart,
-                changes=community_changes
-            )
-
-            async with community:
-                if community.summary is None:
-                    continue
-
-                if community.has_room(self.matrix_room_id):
-                    self.communities.add(community.group_id)
-                    continue
-
-                await community.add_room(self.matrix_room_id)
-
-                if community_changes:
-                    communities_changes.append(community_changes)
-
-        if communities_changes:
-            self.changes['community'] = communities_changes
+    # async def set_communities(self, localparts: Optional[List[str]]):
+    #     if localparts is None:
+    #         return
+    #
+    #     communities_changes: List[Dict[str, Any]] = []
+    #     for localpart in localparts:
+    #         community_changes: Dict[str, Any] = {}
+    #
+    #         community = AnsibleMatrixCommunity(
+    #             matrix_client=self.matrix_client,
+    #             localpart=localpart,
+    #             changes=community_changes
+    #         )
+    #
+    #         async with community:
+    #             if community.summary is None:
+    #                 continue
+    #
+    #             if community.has_room(self.matrix_room_id):
+    #                 self.communities.add(community.group_id)
+    #                 continue
+    #
+    #             await community.add_room(self.matrix_room_id)
+    #
+    #             if community_changes:
+    #                 communities_changes.append(community_changes)
+    #
+    #     if communities_changes:
+    #         self.changes['community'] = communities_changes
 
     async def set_power_levels(self, content: Dict) -> RoomPutStateResponse:
         result = await self.matrix_client.room_put_state(
@@ -287,7 +287,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
 
         old_users_set = set(self.matrix_room.users.keys())
         new_users_set = set(map(lambda it: self.login_to_id(it), power_members.keys()))
-        new_users_set.add(self.matrix_room.creator)
+        new_users_set.add(self.matrix_room.own_user_id)
 
         not_changed_users = set(old_users_set & new_users_set)
         kicked_users = list_subtract(old_users_set, not_changed_users)
@@ -310,8 +310,8 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         if self.matrix_client.user in kicked_users:
             raise AnsibleMatrixError("Can't kick self: {}".format(self.matrix_client.user))
 
-        if self.matrix_room.creator in kicked_users:
-            raise AnsibleMatrixError("Can't kick creator {}".format(self.matrix_room.creator))
+        # if self.matrix_room.creator in kicked_users:
+        #     raise AnsibleMatrixError("Can't kick creator {}".format(self.matrix_room.creator))
 
         # do invites
         for mxid in invited_users:
@@ -383,7 +383,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
             self.set_name(name),
             self.set_visibility(visibility),
             self.set_power_level_overrides(power_level_override),
-            self.set_communities(communities),
+            # self.set_communities(communities),
         )
 
     def matrix_room_exists(self) -> bool:
@@ -438,7 +438,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         await self.set_encryption(encrypt)
         await self.set_avatar(avatar)
         await self.set_power_members(room_members)
-        await self.set_communities(communities)
+        # await self.set_communities(communities)
 
         await self.sync_details()
 
@@ -497,7 +497,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         )
         room_dict['name'] = room.name
         room_dict['topic'] = room.topic
-        room_dict['creator'] = room.creator
+        # room_dict['creator'] = room.own_user_id
 
         # if room.power_levels:
         #     room_dict['power_levels'] = room.power_levels.__dict__
@@ -548,7 +548,7 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         self.matrix_room.room_avatar_url = room_info['avatar']
         self.matrix_room.topic = room_info['topic']
         self.matrix_room.canonical_alias = room_info['canonical_alias']
-        self.matrix_room.creator = room_info['creator']
+        # self.matrix_room.creator = room_info['creator']
         self.matrix_room.federate = room_info['federatable']
         # self.matrix_room = room_info['public']
         self.matrix_room.join_rule = room_info['join_rules']

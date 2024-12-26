@@ -425,6 +425,29 @@ class AnsibleMatrixCommunity(_AnsibleMatrixObject):
                      members: Optional[List[str]] = None,
                      rooms: Optional[List[str]] = None,
                      ):
+        """Updates a Matrix community with the specified parameters.
+
+        This method allows updating various aspects of a Matrix community (group). If the community
+        doesn't exist and a name is provided, it will be created first.
+
+        Args:
+            name: The display name for the community.
+            avatar: Path to an image file to use as the community's avatar.
+            description: A short description of the community.
+            long_description: A longer description of the community (supports markdown).
+            visibility: The visibility setting for the community ('private' or 'public').
+            members: List of Matrix IDs or usernames to invite to the community.
+            rooms: List of room aliases to add to the community.
+
+        Raises:
+            AnsibleMatrixError: If the community needs to be created but no name is provided,
+                or if there's an error in the Matrix API response.
+
+        Note:
+            - If any parameter is None, that aspect of the community will not be updated
+            - The current user will automatically be added to the members list if not present
+            - All changes are tracked in the `self.changes` dictionary
+        """
         try:
             if self.profile is None:
                 if name is None:
@@ -443,7 +466,7 @@ class AnsibleMatrixCommunity(_AnsibleMatrixObject):
 
             await self._load_community()
         except ClientResponseError as e:
-            raise AnsibleMatrixError(f"{e.status} {e.message}")
+            raise AnsibleMatrixError(f"{e.request_info}: {e.status} {e.message} ")
         return
 
     async def delete(self):
