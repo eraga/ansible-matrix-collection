@@ -428,8 +428,10 @@ class AnsibleMatrixRoom(_AnsibleMatrixObject):
         if isinstance(result, RoomCreateError):
             if isinstance(result.status_code, str) and result.status_code == "M_ROOM_IN_USE":
                 raise AnsibleMatrixError("can't create room '{}': already exists".format(self.matrix_room_alias))
+            elif result.message == "Cannot invite so many users at once":
+                raise AnsibleMatrixWarning(result.__str__())
             else:
-                raise AnsibleMatrixError("can't create room '{}':".format(self.matrix_room_alias, result))
+                raise AnsibleMatrixError("can't create room '{}': {}".format(self.matrix_room_alias, result))
 
         self.matrix_room_id = result.room_id
 
