@@ -4,6 +4,7 @@ import copy
 import aiohttp
 from ansible.module_utils.basic import AnsibleModule
 
+from ansible_collections.eraga.matrix.plugins.module_utils.errors import AnsibleMatrixWarning
 from ansible_collections.eraga.matrix.plugins.module_utils.room import *
 from ansible_collections.eraga.matrix.plugins.module_utils.user import AnsibleMatrixUser
 
@@ -132,9 +133,9 @@ async def run_module():
         except AnsibleMatrixError as e:
             result['changed'] = bool(result['changed_fields'])
             module.fail_json(msg='MatrixError={}'.format(e), **result)
-        except aiohttp.client_exceptions.ClientResponseError as e:
+        except (aiohttp.client_exceptions.ClientResponseError, AnsibleMatrixWarning) as e:
             result['changed'] = False
-            module.exit_json(skipped=True, msg="ClientResponseError".format(e))
+            module.exit_json(skipped=True, msg=f"{type(e).__name__}: {str(e)}")
         finally:
             await user.__aexit__()
 

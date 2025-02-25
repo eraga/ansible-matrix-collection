@@ -1,4 +1,3 @@
-import asyncio
 import copy
 
 from ansible.module_utils.basic import AnsibleModule
@@ -22,7 +21,7 @@ ANSIBLE_METADATA = {
     name: Example Room
     topic: This is room managed by ansible 
     preset: trusted_private_chat
-    avatar: "http://example.com/path/to/avatar.png"
+    avatar: "https://example.com/path/to/avatar.png"
     
 - name: Room exists and is part of 'test' and 'prod' community
   eraga.matrix.room:

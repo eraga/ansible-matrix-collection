@@ -2,14 +2,8 @@ import copy
 
 from ansible.module_utils.basic import AnsibleModule
 
-from ansible_collections.eraga.matrix.plugins.module_utils.community import AnsibleMatrixCommunity
+from ansible_collections.eraga.matrix.plugins.module_utils.space import AnsibleMatrixSpace
 from ansible_collections.eraga.matrix.plugins.module_utils.room import *
-import warnings
-
-warnings.warn(
-    "The community module is deprecated. Please use the space module instead as Matrix Communities "
-    "have been replaced by Spaces.", DeprecationWarning
-)
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -17,40 +11,95 @@ ANSIBLE_METADATA = {
     'supported_by': 'curated'
 }
 
-"""
-- name: Community exists at matrix server with avatar from link
-  eraga.matrix.community:
-    matrix_uri: "https://matrix.example.com"
-    matrix_user:  ansiblebot
-    matrix_token: "{{token}}"
-    matrix_domain: example.com
-    # localpart will be transformed to +{{localpart}}:{{matrix_domain}} 
-    localpart: test     
-    name: Test Community
-    avatar: "http://example.com/path/to/local/image.png"
-    description: This community is managed by Ansible      
-    long_description: | 
-      # ¡Hola!
-      Long description that supports markdown.      
+DOCUMENTATION = '''
+module: space
+short_description: Manage Matrix Spaces
+description:
+    - Create and manage Matrix Spaces (next generation replacement for Communities)
+notes:
+    - This module replaces the deprecated community module as Matrix Spaces are the 
+      recommended replacement for Communities/Groups
+    - Spaces are actually rooms with special state events, offering better integration
+      with Matrix clients
+    - Unlike Communities (+), Spaces use room IDs (!) as identifiers
+options:
+    matrix_uri:
+        description: Matrix homeserver URI
+        required: true
+        type: str
+    matrix_user:
+        description: Matrix user to authenticate as
+        required: true
+        type: str
+    matrix_token:
+        description: Matrix access token
+        required: true
+        type: str
+    matrix_domain:
+        description: Matrix server domain
+        required: true
+        type: str
+    localpart:
+        description: Space localpart (will be transformed to !localpart:domain)
+        required: true
+        type: str
+    name:
+        description: Display name for the space
+        required: false
+        type: str
+    topic:
+        description: Topic/description for the space
+        required: false
+        type: str
+    avatar:
+        description: URL to avatar image
+        required: false
+        type: str
+    rooms:
+        description: List of room IDs to add to space
+        required: false
+        type: list
     members:
-      - maria
-      - helga
-      - m0rty
+        description: List of users to invite
+        required: false
+        type: list
+    state:
+        description: Whether the space should exist or not
+        default: present
+        choices: [ present, absent ]
+        type: str
+'''
 
-- name: Community does not exist
-  eraga.matrix.community:
+EXAMPLES = '''
+- name: Create a Matrix Space
+  eraga.matrix.space:
     matrix_uri: "https://matrix.example.com"
-    matrix_user:  ansiblebot
+    matrix_user: ansiblebot
     matrix_token: "{{token}}"
     matrix_domain: example.com
-    localpart: test     
-    state: absent    
-"""
+    localpart: myspace
+    name: My Team Space
+    topic: A space for our team collaboration
+    avatar: "http://example.com/path/to/avatar.png"
+    rooms:
+      - "!roomid1:example.com"
+      - "!roomid2:example.com" 
+    members:
+      - "@user1:example.com"
+      - "@user2:example.com"
+
+- name: Remove a Matrix Space
+  eraga.matrix.space:
+    matrix_uri: "https://matrix.example.com"
+    matrix_user: ansiblebot
+    matrix_token: "{{token}}"
+    matrix_domain: example.com
+    localpart: myspace
+    state: absent
+'''
 
 
 async def run_module():
-    # define the available arguments/parameters that a user can pass to
-    # the module
     module_args = dict(
         matrix_uri=dict(type="str", required=True),
         matrix_user=dict(type="str", required=True),
@@ -59,10 +108,9 @@ async def run_module():
 
         localpart=dict(type='str', required=True),
         name=dict(type='str', default=None),
+        topic=dict(type='str', default=None),
         avatar=dict(type='str', default=None),
-        description=dict(type='str', default=None),
-        long_description=dict(type='str', default=None),
-        visibility=dict(type='str', default=None),
+        visibility=dict(type='str', default='public', choices=['public', 'private']),
         rooms=dict(type='list', default=None),
         members=dict(type='list', default=None),
 
@@ -71,7 +119,7 @@ async def run_module():
     )
 
     result = dict(
-        community={},
+        space={},
         changed=False,
         changed_fields={}
     )
@@ -90,17 +138,17 @@ async def run_module():
         user=module.params['matrix_user']
     )
 
-    community = AnsibleMatrixCommunity(
+    space = AnsibleMatrixSpace(
         matrix_client=matrix_client,
         localpart=module.params['localpart'],
         changes=result['changed_fields']
     )
 
-    async with community:
+    async with space:
         try:
-            exists = community.profile is not None
+            exists = await space.exists()
             if exists:
-                result['community'] = community.summary.dict()
+                result['space'] = await space.get_state()
 
             if module.check_mode:
                 module.exit_json(**result)
@@ -115,11 +163,11 @@ async def run_module():
             del params['state']
 
             if state == 'present':
-                await community.update(**params)
+                await space.create_or_update(**params)
                 result['changed'] = bool(result['changed_fields'])
 
             elif state == 'absent':
-                await community.delete()
+                await space.delete()
                 result['changed'] = bool(result['changed_fields'])
 
             else:
@@ -127,13 +175,11 @@ async def run_module():
                 module.fail_json(msg='Unsupported state={}'.format(state), **result)
 
             if result['changed']:
-                result['community'] = community.summary.dict()
+                result['space'] = await space.get_state()
 
         except AnsibleMatrixError as e:
             result['changed'] = bool(result['changed_fields'])
             module.fail_json(msg='MatrixError={}'.format(e), **result)
-        finally:
-            await community.__aexit__()
 
     module.exit_json(**result)
 

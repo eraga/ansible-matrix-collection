@@ -31,9 +31,20 @@ the other Matrix Homeserver implementations.
 * [ ] ability to reference room by the `id` instead of `alias`.
 * [x] add room to list of communities
 
+|`eraga.matrix.space`
+|yes
+|Manage Matrix Spaces (next-generation replacement for Communities) with Ansible:
+
+* [x] create;
+* [x] update;
+* [x] delete;
+* [x] manage room memberships;
+* [x] manage child rooms;
+* [x] update avatar.
+
 |`eraga.matrix.community`
 |yes
-|Manage Matrix communities with Ansible:
+|[deprecated] Use eraga.matrix.space instead. Manage Matrix communities with Ansible.
 
 * [x] create;
 * [x] update;

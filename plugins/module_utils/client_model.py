@@ -9,7 +9,7 @@ from nio import *
 from nio.responses import WhoamiResponse
 from nio.api import _FilterT
 
-from ansible_collections.eraga.matrix.plugins.module_utils.errors import AnsibleMatrixError
+from ansible_collections.eraga.matrix.plugins.module_utils.errors import AnsibleMatrixError, AnsibleMatrixWarning
 from ansible_collections.eraga.matrix.plugins.module_utils.utils import url2file, detect_mime_type, \
     if_svg_convert_to_png
 
@@ -71,6 +71,26 @@ class _AnsibleMatrixObject(object):
 
 
 class AnsibleMatrixClient(_AnsibleMatrixObject, AsyncClient):
+    """A Matrix client implementation for Ansible modules.
+
+    This class extends both _AnsibleMatrixObject and AsyncClient to provide Matrix
+    client functionality specifically tailored for Ansible automation tasks.
+
+    The client handles Matrix protocol operations such as authentication, room management,
+    message sending, and file uploads while providing Ansible-specific conveniences
+    and error handling.
+
+    Attributes:
+        domain (str): The Matrix server domain.
+        uri (str): The Matrix homeserver URI.
+        token (str): The access token for authentication.
+        user (Optional[str]): The Matrix user ID (optional).
+
+    Inherits:
+        _AnsibleMatrixObject: Provides Matrix ID formatting utilities
+        AsyncClient: Provides core Matrix client functionality
+    """
+
     def __init__(self, domain: str, uri: str, token: str, user: Optional[str] = None):
         _AnsibleMatrixObject.__init__(self, domain=domain)
         AsyncClient.__init__(
@@ -105,11 +125,20 @@ class AnsibleMatrixClient(_AnsibleMatrixObject, AsyncClient):
 
     async def is_same_image(self, image, image_mime_type, mxc_url) -> bool:
         file_stat = await aiofiles.os.stat(image)
-        server, media = mxc_url.replace("mxc://", "").split("/")
-        resp = await self.download(mxc=mxc_url) #, server, media)
-        if isinstance(resp, DownloadError):
-            raise AnsibleMatrixError(
-                f"Failed to download image from '{mxc_url}'. Failure status {resp.status_code} and reason: {resp.message}")
+        # server, media = mxc_url.replace("mxc://", "").split("/")
+        try:
+            resp = await self.download(mxc=mxc_url)  # , server, media)
+            if isinstance(resp, DownloadError):
+                raise AnsibleMatrixWarning(
+                    f"Failed to download image from '{mxc_url}'. "
+                    f"Failure status {resp.status_code} and reason: {resp.message}",
+                    orig_exc=resp
+                )
+        except AttributeError as e:
+            raise AnsibleMatrixWarning(
+                f"Failed to download image from '{mxc_url}'. Failure details: {e}",
+                orig_exc=e
+            )
 
         if file_stat.st_size == len(resp.body) \
                 and image_mime_type == resp.content_type \
@@ -117,8 +146,10 @@ class AnsibleMatrixClient(_AnsibleMatrixObject, AsyncClient):
             return True
         return False
 
-    async def upload_image_if_new(self, in_image: Optional[str], old_mxc_url: Optional[str]) -> Optional[
-        UploadResponse]:
+    async def upload_image_if_new(
+            self,
+            in_image: Optional[str],
+            old_mxc_url: Optional[str]) -> Optional[UploadResponse]:
         if in_image is None:
             return None
 
