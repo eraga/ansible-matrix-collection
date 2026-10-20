@@ -111,13 +111,17 @@ async def _room_members_wanted(api: MatrixApi, room_members: Optional[Dict[str, 
     return wanted, missing
 
 
-async def sync_room(api: MatrixApi, alias: str, name: Optional[str] = None, topic: Optional[str] = None,
+def _fq(alias: str, domain: str) -> str:
+    return alias if alias.startswith("#") else "#{}:{}".format(alias, domain)
+
+
+async def sync_room(api: MatrixApi, alias: str, canonical_alias: Optional[str] = None, name: Optional[str] = None, topic: Optional[str] = None,
                     avatar: Optional[str] = None, federate: bool = False, visibility: str = "private",
                     preset: Optional[str] = None, room_members: Optional[Dict[str, int]] = None,
                     power_level_override: Optional[Dict[str, Any]] = None, encrypt: bool = False,
                     state: str = "present", **_ignored) -> Dict[str, Any]:
     me = await api.me()
-    fq_alias = alias if alias.startswith("#") else "#{}:{}".format(alias, api.client.domain)
+    fq_alias = _fq(alias, api.client.domain)
     result: Dict[str, Any] = {"alias": fq_alias, "room_id": None, "changed": False, "changed_fields": {},
                               "absent_users": [], "refused": []}
     changes = result["changed_fields"]
@@ -230,7 +234,38 @@ async def sync_room(api: MatrixApi, alias: str, name: Optional[str] = None, topi
             await api.set_directory_visibility(room_id, visibility)
             changes["visibility"] = {"old": old, "new": visibility}
 
+    async def set_canonical_alias():
+        # `alias` finds the room and must never move; `canonical_alias` is
+        # the address clients show, and it follows the project key. The
+        # previous canonical alias named a key that is gone: drop it.
+        if canonical_alias is None:
+            return
+        wanted = _fq(canonical_alias, api.client.domain)
+        current = room.content("m.room.canonical_alias")
+        previous = current.get("alias")
+        owner = await api.resolve_alias(wanted)
+        if owner not in (None, room_id):
+            result["refused"].append({"action": "canonical alias", "mxid": wanted,
+                                      "error": "taken by room {}".format(owner)})
+            return
+        if owner is None:
+            await api.create_alias(wanted, room_id)
+            changes["alias_created"] = wanted
+        stale = previous if previous not in (None, wanted, fq_alias) else None
+        alt = [] if fq_alias == wanted else [fq_alias]
+        alt += [a for a in current.get("alt_aliases") or [] if a not in (wanted, fq_alias, stale) and a not in alt]
+        content = {"alias": wanted}
+        if alt:
+            content["alt_aliases"] = alt
+        if current != content:
+            await api.put_state(room_id, "m.room.canonical_alias", content)
+            changes["canonical_alias"] = {"old": current or None, "new": content}
+        if stale is not None and await api.resolve_alias(stale) == room_id:
+            await api.delete_alias(stale)
+            changes["alias_removed"] = stale
+
     await asyncio.gather(
+        set_canonical_alias(),
         set_simple("m.room.name", "name", name, "name"),
         set_simple("m.room.topic", "topic", topic, "topic"),
         set_avatar(),

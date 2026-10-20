@@ -72,6 +72,17 @@ class FakeApi:
     async def resolve_alias(self, alias):
         return self.rooms[alias][0] if alias in self.rooms else None
 
+    async def create_alias(self, alias, room_id):
+        self.calls.append(("create_alias", alias))
+        self.rooms[alias] = (room_id, self.rooms_state(room_id))
+
+    async def delete_alias(self, alias):
+        self.calls.append(("delete_alias", alias))
+        self.rooms.pop(alias, None)
+
+    def rooms_state(self, room_id):
+        return next(s for rid, s in self.rooms.values() if rid == room_id)
+
     async def room_state(self, room_id):
         return next(s for rid, s in self.rooms.values() if rid == room_id)
 
@@ -218,6 +229,56 @@ class Rooms(unittest.TestCase):
         with self.assertRaises(MatrixHttpError):
             run(sync_room(api, "r", room_members={"stay": 0}))
         self.assertFalse(api.actions("kick"))
+
+
+
+def canonical(alias, alt=None):
+    content = {"alias": alias}
+    if alt:
+        content["alt_aliases"] = alt
+    return {"type": "m.room.canonical_alias", "state_key": "", "content": content}
+
+
+class Aliases(unittest.TestCase):
+    def api(self, events, extra_rooms=None):
+        state = [member(ME)] + events
+        rooms = {"#project_1:x": ("!r:x", state)}
+        rooms.update(extra_rooms or {})
+        return FakeApi(rooms=rooms)
+
+    def test_existing_room_gets_key_alias_as_canonical(self):
+        api = self.api([canonical("#project_1:x")])
+        result = run(sync_room(api, "project_1", canonical_alias="csd"))
+        self.assertEqual(api.actions("create_alias"), [("create_alias", "#csd:x")])
+        self.assertEqual([c for c in api.actions("put_state") if c[1] == "m.room.canonical_alias"],
+                         [("put_state", "m.room.canonical_alias",
+                           {"alias": "#csd:x", "alt_aliases": ["#project_1:x"]})])
+        self.assertFalse(api.actions("delete_alias"))
+        self.assertTrue(result["changed"])
+
+    def test_done_room_makes_no_calls(self):
+        api = self.api([canonical("#csd:x", ["#project_1:x"])])
+        api.rooms["#csd:x"] = ("!r:x", api.rooms["#project_1:x"][1])
+        result = run(sync_room(api, "project_1", canonical_alias="csd"))
+        self.assertEqual(api.calls, [])
+        self.assertFalse(result["changed"], result["changed_fields"])
+
+    def test_renamed_key_moves_alias_and_drops_the_old(self):
+        api = self.api([canonical("#old:x", ["#project_1:x", "#hand:x"])])
+        state = api.rooms["#project_1:x"][1]
+        api.rooms["#old:x"] = ("!r:x", state)
+        api.rooms["#hand:x"] = ("!r:x", state)
+        result = run(sync_room(api, "project_1", canonical_alias="new"))
+        self.assertEqual(api.actions("create_alias"), [("create_alias", "#new:x")])
+        self.assertEqual(api.actions("delete_alias"), [("delete_alias", "#old:x")])
+        self.assertEqual(result["changed_fields"]["canonical_alias"]["new"],
+                         {"alias": "#new:x", "alt_aliases": ["#project_1:x", "#hand:x"]})
+
+    def test_alias_of_another_room_is_not_taken(self):
+        api = self.api([canonical("#project_1:x")], extra_rooms={"#csd:x": ("!other:x", [])})
+        result = run(sync_room(api, "project_1", canonical_alias="csd"))
+        self.assertEqual(api.calls, [])
+        self.assertEqual([f["action"] for f in result["refused"]], ["canonical alias"])
 
 
 if __name__ == "__main__":

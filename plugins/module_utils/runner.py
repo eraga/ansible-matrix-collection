@@ -22,6 +22,8 @@ USER_OPTIONS = dict(
 
 ROOM_OPTIONS = dict(
     alias=dict(type="str", required=True),
+    # The address people see; `alias` stays the one the room is found by.
+    canonical_alias=dict(type="str", default=None),
     name=dict(type="str", default=None),
     topic=dict(type="str", default=None),
     avatar=dict(type="str", default=None),

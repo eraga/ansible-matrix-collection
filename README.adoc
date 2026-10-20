@@ -29,6 +29,7 @@ the other Matrix Homeserver implementations.
 * [x] invite room members: only users the server has (`absent_users` lists the rest);
 * [x] kick members not in `room_members`, except owners (power level 100);
 * [x] update room avatar.
+* [x] `canonical_alias`: a human address (`#csd`) shown by clients, while `alias` (`#project_<id>`) keeps finding the room; follows a renamed key, never takes another room's alias.
 * [ ] ability to reference room by the `id` instead of `alias`.
 * `rooms` takes a list and syncs it over one connection.
 

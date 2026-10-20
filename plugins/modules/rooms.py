@@ -14,6 +14,11 @@ description:
     have are not invited and get no power level; they are listed per room in
     C(absent_users). Members not listed are kicked, except room owners
     (power level 100), whom Matrix does not let anyone demote.
+  - C(alias) is how a room is found and never moves. C(canonical_alias), when
+    given, is the address clients show: it is created, made canonical with
+    C(alias) among the alt aliases, and the previous canonical alias, if it
+    is neither, is removed (a renamed project key). An alias another room
+    holds is never taken: a warning, nothing changed.
   - Reads room state through the Synapse admin API (the token must be a
     server admin's); no client /sync.
 options:

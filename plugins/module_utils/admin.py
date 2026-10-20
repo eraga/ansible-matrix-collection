@@ -186,6 +186,16 @@ class MatrixApi:
         body, _ = await self.request("GET", f"{CLIENT}/directory/room/{_q(alias)}", missing_ok=True)
         return body["room_id"] if body else None
 
+    async def create_alias(self, alias: str, room_id: str):
+        if self.check_mode:
+            return
+        await self.request("PUT", f"{CLIENT}/directory/room/{_q(alias)}", body={"room_id": room_id})
+
+    async def delete_alias(self, alias: str):
+        if self.check_mode:
+            return
+        await self.request("DELETE", f"{CLIENT}/directory/room/{_q(alias)}", missing_ok=True)
+
     async def room_state(self, room_id: str) -> List[Dict[str, Any]]:
         body, _ = await self.request("GET", f"{ADMIN}/v1/rooms/{_q(room_id)}/state")
         return body["state"]
