@@ -1,49 +1,37 @@
-import copy
-
 from ansible.module_utils.basic import AnsibleModule
 
-from ansible_collections.eraga.matrix.plugins.module_utils.room import *
+from ansible_collections.eraga.matrix.plugins.module_utils.runner import CONNECTION_ARGS, ROOM_OPTIONS, make_api, run
+from ansible_collections.eraga.matrix.plugins.module_utils.sync import sync_room
 
-ANSIBLE_METADATA = {
-    'metadata_version': '1.0',
-    'status': ['preview'],
-    'supported_by': 'curated'
-}
+DOCUMENTATION = r'''
+module: room
+short_description: Ensure one Matrix room
+description:
+  - The room exists with the given name, topic, avatar, encryption,
+    visibility, power levels and members, or is deleted (C(state=absent)).
+  - C(room_members) maps logins to power levels and is the complete member
+    list. Users the server does not have are not invited (see
+    C(absent_users)); members not listed are kicked, except owners (level 100).
+  - For many rooms use M(eraga.matrix.rooms), which shares one connection.
+'''
 
-"""
-- name: Room exists in community:
+EXAMPLES = r'''
+- name: Project room
   eraga.matrix.room:
     matrix_uri: "https://matrix.example.com"
-    matrix_user:  ansiblebot
-    matrix_token: "{{token}}"
+    matrix_token: "{{ token }}"
     matrix_domain: example.com
-    alias: example_room 
+    alias: example_room
     name: Example Room
-    topic: This is room managed by ansible 
-    preset: trusted_private_chat
-    avatar: "https://example.com/path/to/avatar.png"
-    
-- name: Room exists and is part of 'test' and 'prod' community
-  eraga.matrix.room:
-    matrix_uri: "https://matrix.example.com"
-    matrix_user:  ansiblebot
-    matrix_token: "{{token}}"
-    matrix_domain: example.com
-    alias: example_room 
-    name: Example Room
-    topic: This is room managed by ansible 
+    topic: This is room managed by ansible
     federate: no
     visibility: private
-    preset: trusted_private_chat
-    avatar: "/path/to/avatar.png"
-    communities:
-      - test
-      - prod
+    preset: private_chat
+    encrypt: yes
+    avatar: "https://example.com/path/to/avatar.png"
     room_members:
-      owner_login: 100
       admin_login: 90
-      moderator_login: 0 
-      user_login: 0 
+      user_login: 0
     power_level_override:
       events_default: 0
       state_default: 50
@@ -51,133 +39,35 @@ ANSIBLE_METADATA = {
       kick: 50
       redact: 50
       invite: 50
-    community: Example    
-"""
-
-
-async def run_module():
-    # define the available arguments/parameters that a user can pass to
-    # the module
-    module_args = dict(
-        matrix_uri=dict(type="str", required=True),
-        matrix_user=dict(type="str", default=None),
-        matrix_domain=dict(type="str", required=True),
-        matrix_token=dict(type="str", required=True, no_log=True),
-
-        alias=dict(type='str', required=True),
-
-        name=dict(type='str', default=None),
-        topic=dict(type='str', default=None),
-        avatar=dict(type='str', default=None),
-        federate=dict(type='bool', default=False),
-        visibility=dict(type='str', default="private",
-                        choices=["private", "public"]),
-        preset=dict(type='str', default=None,
-                    choices=["private_chat", "trusted_private_chat", "public_chat"]),
-        room_members=dict(type='dict', default=None),
-        power_level_override=dict(type='dict', default=None),
-        encrypt=dict(type='bool', default=False),
-
-        communities=dict(type='list', default=None),
-
-        state=dict(type="str", default="present",
-                   choices=["present", "absent", "archived"])
-    )
-
-    # seed the result dict in the object
-    # we primarily care about changed and state
-    # change is if this module effectively modified the target
-    # state will include any data that you want your module to pass back
-    # for consumption, for example, in a subsequent task
-    result = dict(
-        room={},
-        changed=False,
-        changed_fields={}
-    )
-
-    # the AnsibleModule object will be our abstraction working with Ansible
-    # this includes instantiation, a couple of common attr would be the
-    # args/params passed to the execution, as well as if the module
-    # supports check mode
-    module = AnsibleModule(
-        argument_spec=module_args,
-        supports_check_mode=True
-    )
-
-    state = module.params['state']
-
-    matrix_client = AnsibleMatrixClient(
-        domain=module.params["matrix_domain"],
-        uri=module.params['matrix_uri'],
-        token=module.params['matrix_token'],
-        user=module.params['matrix_user']
-    )
-
-    room = AnsibleMatrixRoom(
-        matrix_client=matrix_client,
-        matrix_room_alias=module.params['alias'],
-        changes=result['changed_fields']
-    )
-
-    async with room:
-        try:
-            room_exists = room.matrix_room_exists()
-            if room_exists:
-                result['room'] = room.matrix_room_to_dict()
-                # del result['room']['power_levels']
-
-            if module.check_mode:
-                module.exit_json(**result)
-                return result
-
-            room_params = copy.deepcopy(module.params)
-            del room_params['matrix_uri']
-            del room_params['matrix_user']
-            del room_params['matrix_domain']
-            del room_params['matrix_token']
-            del room_params['alias']
-            del room_params['state']
-
-            if state == 'absent':
-                if room_exists:
-                    await room.delete()
-                    result['changed'] = bool(result['changed_fields'])
-                    # result['changed'] = api.delete(result['project']['id'])
-
-            elif state == 'present':
-                if not room_exists:
-                    await room.matrix_room_create(**room_params)
-                    result['changed'] = bool(result['changed_fields'])
-                else:
-                    await room.matrix_room_update(**room_params)
-                    result['changed'] = bool(result['changed_fields'])
-
-            # elif state == 'archived':
-            #     if not result['project']['archived']:
-            #         result['changed_fields'] = api.update(project)
-            #         result['changed'] = result['changed_fields'] is not False
-
-            else:
-                result['changed'] = bool(result['changed_fields'])
-                module.fail_json(msg='Unsupported state={}'.format(state), **result)
-
-            if result['changed']:
-                await matrix_client.sync()
-                result['room'] = room.matrix_room_to_dict()
-
-        except AnsibleMatrixError as e:
-            result['changed'] = bool(result['changed_fields'])
-            module.fail_json(msg='MatrixError={}'.format(e), **result)
-        finally:
-            await room.__aexit__()
-
-    # print(result)
-    module.exit_json(**result)
+'''
 
 
 def main():
-    asyncio.get_event_loop().run_until_complete(run_module())
+    module = AnsibleModule(
+        argument_spec=dict(
+            **CONNECTION_ARGS,
+            **ROOM_OPTIONS,
+            state=dict(type="str", default="present", choices=["present", "absent"]),
+        ),
+        supports_check_mode=True,
+    )
+    spec = {k: module.params[k] for k in list(ROOM_OPTIONS) + ["state"]}
+
+    async def go():
+        api = make_api(module)
+        try:
+            return await sync_room(api, **spec)
+        finally:
+            await api.close()
+
+    try:
+        result = run(go())
+    except Exception as e:
+        module.fail_json(msg="{}: {}".format(type(e).__name__, e))
+    for f in result["refused"]:
+        module.warn("{} {} failed: {}".format(f["action"], f["mxid"], f["error"]))
+    module.exit_json(**result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

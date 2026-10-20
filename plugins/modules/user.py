@@ -1,151 +1,78 @@
-import asyncio
-import copy
-
-import aiohttp
 from ansible.module_utils.basic import AnsibleModule
 
-from ansible_collections.eraga.matrix.plugins.module_utils.errors import AnsibleMatrixWarning
-from ansible_collections.eraga.matrix.plugins.module_utils.room import *
-from ansible_collections.eraga.matrix.plugins.module_utils.user import AnsibleMatrixUser
+from ansible_collections.eraga.matrix.plugins.module_utils.runner import CONNECTION_ARGS, USER_OPTIONS, make_api, run
+from ansible_collections.eraga.matrix.plugins.module_utils.sync import sync_user
 
-ANSIBLE_METADATA = {
-    'metadata_version': '1.0',
-    'status': ['preview'],
-    'supported_by': 'curated'
-}
+DOCUMENTATION = r'''
+module: user
+short_description: Sync the profile of one Matrix user
+description:
+  - Sets display name, avatar and admin flag, or deactivates the account.
+  - A user the server does not have is left alone (C(exists=false)); it is never created.
+  - For many users use M(eraga.matrix.users), which shares one connection.
+options:
+  state:
+    type: str
+    default: present
+    choices: [present, deactivated]
+'''
 
-"""
-- name: User exists at matrix server  wit avatar from file system
+EXAMPLES = r'''
+- name: User has an avatar from the web
   eraga.matrix.user:
     matrix_uri: "https://matrix.example.com"
-    matrix_token: "{{token}}"
+    matrix_token: "{{ token }}"
     matrix_domain: example.com
-    login: ivan     
-    displayname: Ivan Kalinin     
-    avatar: "/path/to/local/image.png"
-    
-- name: User exists at matrix server
-  eraga.matrix.user:
-    matrix_uri: "https://matrix.example.com"
-    matrix_token: "{{token}}"
-    matrix_domain: example.com
-    login: johnny     
-    displayname: Джон Доу     
-    avatar: "http:/example.com/path/to/web/image.png"     
+    login: johnny
+    displayname: Джон Доу
+    avatar: "https://example.com/path/to/web/image.png"
 
-- name: User exists and deactivated at matrix server
+- name: User is deactivated
   eraga.matrix.user:
     matrix_uri: "https://matrix.example.com"
-    matrix_token: "{{token}}"
+    matrix_token: "{{ token }}"
     matrix_domain: example.com
-    login: c3p0     
+    login: c3p0
     state: deactivated
-    
-- name: Get account info from Matrix server
+
+- name: Read an account (check mode changes nothing)
   eraga.matrix.user:
     matrix_uri: "https://matrix.example.com"
-    matrix_token: "{{token}}"
+    matrix_token: "{{ token }}"
     matrix_domain: example.com
-    login: d_trump     
+    login: d_trump
   check_mode: yes
-  register: matrix_user 
-"""
-
-
-async def run_module():
-    # define the available arguments/parameters that a user can pass to
-    # the module
-    module_args = dict(
-        matrix_uri=dict(type="str", required=True),
-        matrix_user=dict(type="str", default=None),
-        matrix_domain=dict(type="str", required=True),
-        matrix_token=dict(type="str", required=True, no_log=True),
-
-        login=dict(type='str', required=True),
-        displayname=dict(type='str', default=None),
-        avatar=dict(type='str', default=None),
-
-        admin=dict(type='bool', default=None),
-
-        state=dict(type="str", default="present",
-                   choices=["present", "deactivated"])
-    )
-
-    result = dict(
-        user={},
-        changed=False,
-        changed_fields={}
-    )
-
-    module = AnsibleModule(
-        argument_spec=module_args,
-        supports_check_mode=True
-    )
-
-    state = module.params['state']
-
-    matrix_client = AnsibleMatrixClient(
-        domain=module.params["matrix_domain"],
-        uri=module.params['matrix_uri'],
-        token=module.params['matrix_token'],
-        user=module.params['matrix_user']
-    )
-
-    user = AnsibleMatrixUser(
-        matrix_client=matrix_client,
-        login=module.params['login'],
-        changes=result['changed_fields']
-    )
-
-    async with user:
-        try:
-            exists = user.account is not None
-            if exists:
-                result['user'] = user.account.dict()
-
-            if module.check_mode:
-                module.exit_json(**result)
-                return result
-
-            params = copy.deepcopy(module.params)
-            del params['matrix_uri']
-            del params['matrix_user']
-            del params['matrix_domain']
-            del params['matrix_token']
-            del params['login']
-            del params['state']
-
-            if state == 'present':
-                await user.update(**params)
-                result['changed'] = bool(result['changed_fields'])
-
-            elif state == 'deactivated':
-                await user.set_deactivated(True)
-                result['changed'] = bool(result['changed_fields'])
-
-            else:
-                result['changed'] = bool(result['changed_fields'])
-                module.fail_json(msg='Unsupported state={}'.format(state), **result)
-
-            if result['changed']:
-                result['user'] = user.account.dict()
-
-        except AnsibleMatrixError as e:
-            result['changed'] = bool(result['changed_fields'])
-            module.fail_json(msg='MatrixError={}'.format(e), **result)
-        except (aiohttp.client_exceptions.ClientResponseError, AnsibleMatrixWarning) as e:
-            result['changed'] = False
-            module.exit_json(skipped=True, msg=f"{type(e).__name__}: {str(e)}")
-        finally:
-            await user.__aexit__()
-
-    # print(result)
-    module.exit_json(**result)
+  register: matrix_user
+'''
 
 
 def main():
-    asyncio.get_event_loop().run_until_complete(run_module())
+    module = AnsibleModule(
+        argument_spec=dict(
+            **CONNECTION_ARGS,
+            **USER_OPTIONS,
+            state=dict(type="str", default="present", choices=["present", "deactivated"]),
+        ),
+        supports_check_mode=True,
+    )
+    p = module.params
+
+    async def go():
+        api = make_api(module)
+        try:
+            result = await sync_user(api, p["login"], p["displayname"], p["avatar"], p["admin"], p["state"])
+            result["user"] = await api.account(result["mxid"]) or {}
+            return result
+        finally:
+            await api.close()
+
+    try:
+        result = run(go())
+    except Exception as e:
+        module.fail_json(msg="{}: {}".format(type(e).__name__, e))
+    result["user"].pop("password_hash", None)
+    module.exit_json(**result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

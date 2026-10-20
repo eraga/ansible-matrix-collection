@@ -10,26 +10,34 @@ the other Matrix Homeserver implementations.
 |===
 |Name |Check mode |Description and features
 
-|`eraga.matrix.user`
+|`eraga.matrix.user`, `eraga.matrix.users`
 |yes
 |Manage Matrix users with Ansible (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/user_admin_api.rst[synapse admin api]):
 
-* [x] register user (password can't be set though),
-* [x] update profile,
-* [x] deactivate.
+* [x] update profile (display name, avatar, admin flag);
+* [x] deactivate;
+* users the server does not have are skipped, never created (`exists: false`, `missing` in `users`);
+* `users` takes a list and syncs it over one connection, `concurrency` requests at a time.
 
-|`eraga.matrix.room`
+|`eraga.matrix.room`, `eraga.matrix.rooms`
 |yes
-|Manage Matrix rooms with Ansible:
+|Manage Matrix rooms with Ansible (room state is read through the synapse admin api, no client sync):
 
 * [x] create;
 * [x] update;
 * [x] delete (via https://github.com/matrix-org/synapse/blob/develop/docs/admin_api/rooms.md#delete-room-api[synapse admin api]);
-* [x] invite room members;
-* [x] kick room members;
+* [x] invite room members: only users the server has (`absent_users` lists the rest);
+* [x] kick members not in `room_members`, except owners (power level 100);
 * [x] update room avatar.
 * [ ] ability to reference room by the `id` instead of `alias`.
-* [x] add room to list of communities
+* `rooms` takes a list and syncs it over one connection.
+
+Avatars (users and rooms) are uploaded under a name made from a hash of the
+*source* picture, and the check compares that name only. An SVG source is
+rendered to PNG, and the PNG differs between machines, so comparing rendered
+bytes re-uploaded unchanged avatars whenever the sync ran elsewhere.
+
+Unit tests: `python tests/unit/test_sync.py`.
 
 |`eraga.matrix.space`
 |yes

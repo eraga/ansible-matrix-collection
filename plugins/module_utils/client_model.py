@@ -52,7 +52,9 @@ class _AnsibleMatrixObject(object):
         if login.startswith("@") and ":" in login:
             return login
 
-        return "@{}:{}".format(login, self.domain)
+        # Matrix localparts are lower case: Hub login Ekaterina_Mochalova is
+        # @ekaterina_mochalova; the mixed-case ID does not exist.
+        return "@{}:{}".format(login.lower(), self.domain)
 
     def room_alias_to_mx_alias(self, alias: str) -> str:
         if alias.startswith("!") and ":" in alias:
